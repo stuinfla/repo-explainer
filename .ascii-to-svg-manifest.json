@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "lastSync": "2026-06-19T18:11:10Z",
+  "diagrams": [
+    {
+      "id": "pipeline",
+      "sourceFile": "README.md",
+      "svgFile": "assets/diagrams/pipeline.svg",
+      "lastConverted": "2026-06-19T18:11:10Z"
+    },
+    {
+      "id": "dual-hero",
+      "sourceFile": "README.md",
+      "svgFile": "assets/diagrams/dual-hero.svg",
+      "lastConverted": "2026-06-19T18:11:10Z"
+    },
+    {
+      "id": "five-gates",
+      "sourceFile": "README.md",
+      "svgFile": "assets/diagrams/five-gates.svg",
+      "lastConverted": "2026-06-19T18:11:10Z"
+    }
+  ]
+}
