@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentic QE Fleet — AI-powered quality engineering agents</title>
+  <meta name="description" content="A plain-language explainer for proffesor-for-testing/agentic-qe: 60 AI agents, 75 skills, 11 platforms. Free, open-source quality engineering." />
+  <meta name="color-scheme" content="dark" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Learning and using Agentic QE Fleet" />
+  <meta property="og:description" content="A plain-language walkthrough of the Agentic QE Fleet — 60 AI-powered agents that generate tests, find coverage gaps, detect flaky tests, and learn your codebase patterns." />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===================== PROVENANCE / ATTRIBUTION ===================== -->
+  <div class="prov-banner" role="note" aria-label="Source and provenance">
+    <div class="wrap prov-banner-inner">
+      <p class="prov-attr">
+        A plain-language explainer for
+        <a href="https://github.com/proffesor-for-testing/agentic-qe"><strong>proffesor-for-testing/agentic-qe</strong></a>
+        by <strong>Dragan Spiridonov</strong>
+        (<a href="https://github.com/proffesor-for-testing">@proffesor-for-testing</a>)
+        and <a href="https://github.com/proffesor-for-testing/agentic-qe/graphs/contributors">contributors</a>.
+        An independent walkthrough of the open-source project.
+      </p>
+      <p class="prov-live">
+        <span class="prov-dot" aria-hidden="true">&#9679;</span>
+        Updated 2026-06-25 &middot; source <code>@ c092dce</code> &middot; v3.11.1 &middot; MIT License
+      </p>
+    </div>
+  </div>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="site-head">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <span class="coin" aria-hidden="true">QE</span>
+        Agentic QE
+      </a>
+      <nav class="nav-links" aria-label="Section navigation">
+        <a href="#s01">Why</a>
+        <a href="#s04">How</a>
+        <a href="#s07">Start</a>
+        <a href="#s08">Use cases</a>
+        <a href="#s09">Get it</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===================== HERO ===================== -->
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">proffesor-for-testing &middot; agentic-qe</p>
+          <h1>Quality is<br /><span class="molten">the product.</span></h1>
+          <p class="lede">
+            Agentic QE Fleet is a free, open-source AI-powered quality engineering
+            platform. It deploys <strong>60 specialized agents</strong> and
+            <strong>75 skills</strong> that generate tests, find coverage gaps,
+            detect flaky tests, and learn your codebase patterns &mdash; across
+            <strong>11 coding agent platforms</strong>. It works with your
+            existing tools and CI/CD pipeline.
+          </p>
+          <div class="meta-row" aria-hidden="true">
+            <span>CLI&nbsp;<b>npm i -g agentic-qe</b></span>
+            <span>NPM&nbsp;<b>agentic-qe</b></span>
+            <span>VERSION&nbsp;<b>v3.11.1</b></span>
+            <span>LICENSE&nbsp;<b>MIT</b></span>
+          </div>
+          <a class="cta" href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">View on GitHub &rarr;</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SOURCE REPO BANNER ===================== -->
+    <div class="wrap">
+      <div class="repo-banner">
+        <div class="repo-banner-icon" aria-hidden="true">&#128279;</div>
+        <div class="repo-banner-text">
+          <p><strong>This explainer is built from the public GitHub repository:</strong></p>
+          <p class="repo-url">
+            <a href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">https://github.com/proffesor-for-testing/agentic-qe</a>
+          </p>
+          <p style="margin-top:6px; font-size:0.9rem; color:var(--ink-2);">
+            All source code, releases, and downloads linked from this page are
+            <strong>publicly available</strong> under the MIT License. No login required.
+          </p>
+        </div>
+        <a class="repo-banner-cta" href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">
+          GitHub Repo &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- ===================== SECTIONS ===================== -->
+    <div class="sections">
+      <div class="wrap">
+
+        <!-- 01 — WHY IT WAS BUILT -->
+        <details class="section" id="s01" open>
+          <summary>
+            <span class="num">01</span>
+            <span class="head-text">
+              <h2>Why it was built</h2>
+              <span class="q">The problem every team hits: tests that don&rsquo;t keep up with code.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              Every team ships faster than their tests can follow. New features
+              land daily; test suites fall behind. Coverage gaps hide in the
+              cracks. Flaky tests erode trust until the team stops reading CI
+              results. Manual QE doesn&rsquo;t scale, and bolting on yet another
+              tool adds integration tax without solving the root cause.
+            </p>
+            <p>
+              <strong>Dragan Spiridonov</strong> built Agentic QE because
+              existing solutions attacked one slice of the problem &mdash;
+              generation <em>or</em> coverage <em>or</em> flakiness &mdash; but
+              never the whole surface. A coordinated fleet of AI agents, each
+              a specialist in one QE domain, can cover the full lifecycle:
+              generate, analyze, execute, learn, and gate.
+            </p>
+            <p>
+              The project is open-source (MIT), free to use, fork, and contribute
+              to. It is based on the <strong>Agentic QE Framework</strong>
+              created by Dragan Spiridonov.
+            </p>
+            <p>
+              <a href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">
+                View the source &rarr; github.com/proffesor-for-testing/agentic-qe
+              </a>
+            </p>
+          </div>
+        </details>
+
+        <!-- 02 — WHAT PROBLEM -->
+        <details class="section" id="s02">
+          <summary>
+            <span class="num">02</span>
+            <span class="head-text">
+              <h2>What problem it solves</h2>
+              <span class="q">Tests fall behind, coverage rots, flaky tests erode trust.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              Modern codebases grow faster than any human team can test.
+              Agentic QE attacks the full quality surface at once:
+            </p>
+            <ul>
+              <li><strong>Test generation gap</strong> &mdash; writing unit, integration, property-based, and BDD tests by hand takes days. AQE generates them in seconds, across 15+ frameworks (Jest, Vitest, Playwright, Cypress, pytest, JUnit, Go, Rust, Swift, Flutter, and more).</li>
+              <li><strong>Coverage blind spots</strong> &mdash; line-coverage tools tell you <em>what</em> ran, not <em>what matters</em>. AQE&rsquo;s risk-weighted analysis identifies the most impactful untested code paths.</li>
+              <li><strong>Flaky tests</strong> &mdash; tests that pass today and fail tomorrow. AQE uses ML-powered detection, root-cause analysis, and stabilization recommendations.</li>
+              <li><strong>Pattern amnesia</strong> &mdash; every new test file starts from scratch. AQE remembers patterns across sessions and projects, getting better with every interaction.</li>
+              <li><strong>Tool sprawl</strong> &mdash; one SAST tool here, a coverage tool there, a linter somewhere else. AQE coordinates 60 agents across 13 domains through one interface.</li>
+              <li><strong>AI cost overhead</strong> &mdash; sending everything to the biggest model is expensive. AQE routes tasks to the right model tier automatically (Haiku for simple, Sonnet for moderate, Opus for critical).</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- 03 — WHY NOW -->
+        <details class="section" id="s03">
+          <summary>
+            <span class="num">03</span>
+            <span class="head-text">
+              <h2>Why now</h2>
+              <span class="q">Coding agents exist &mdash; now QE needs agents too.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              Coding agents like Claude Code, Cursor, and Copilot accelerate
+              development. Code output has increased by an order of magnitude
+              for many teams. But quality engineering hasn&rsquo;t kept pace &mdash;
+              developers still write tests by hand, run coverage reports manually,
+              and debug flaky CI one test at a time.
+            </p>
+            <p>
+              The <strong>MCP (Model Context Protocol)</strong> standard now
+              lets AI tools share context and call specialized servers. AQE plugs
+              into this: one <code>aqe init --auto</code> and your coding agent
+              has 60 QE specialists on call. No new IDE, no new workflow. It
+              meets developers where they already work.
+            </p>
+            <p>
+              And with local models like Ollama available for free, teams can now
+              run routine test generation at <strong>$0 cost</strong> using
+              AQE&rsquo;s free-tier mode (<code>AQE_FREE_TIER=1</code>), falling
+              back to cloud models only for complex reasoning.
+            </p>
+          </div>
+        </details>
+
+        <!-- 04 — HOW IT SOLVES IT -->
+        <details class="section" id="s04">
+          <summary>
+            <span class="num">04</span>
+            <span class="head-text">
+              <h2>How it works</h2>
+              <span class="q">A fleet of 60 specialized agents, coordinated by a Queen.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              AQE organizes 60 agents into <strong>13 domains</strong>. The
+              <strong>Queen Coordinator</strong> decomposes any quality task,
+              spawns the right domain specialists, coordinates them in parallel,
+              and synthesizes results.
+            </p>
+
+            <table class="agent-table">
+              <thead>
+                <tr><th>Domain</th><th>Agents</th><th>What they do</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Test Generation</td><td>4</td><td>Generate tests, TDD workflows, mutation testing, property testing</td></tr>
+                <tr><td>Test Execution</td><td>3</td><td>Run tests in parallel, handle retries, integration testing</td></tr>
+                <tr><td>Coverage Analysis</td><td>2</td><td>Find untested code, prioritize by risk</td></tr>
+                <tr><td>Quality Assessment</td><td>4</td><td>Go/no-go gates, risk scoring, adversarial review</td></tr>
+                <tr><td>Defect Intelligence</td><td>4</td><td>Predict bugs, find root causes, fix flaky tests</td></tr>
+                <tr><td>Requirements</td><td>2</td><td>Validate testability, generate BDD scenarios</td></tr>
+                <tr><td>Code Intelligence</td><td>4</td><td>Knowledge graphs, semantic search, change impact</td></tr>
+                <tr><td>Security</td><td>3</td><td>SAST/DAST, compliance audits, exploit validation</td></tr>
+                <tr><td>Contracts</td><td>2</td><td>API contracts, GraphQL schema testing</td></tr>
+                <tr><td>Visual &amp; A11y</td><td>3</td><td>Visual regression, WCAG compliance, viewport testing</td></tr>
+                <tr><td>Chaos &amp; Performance</td><td>3</td><td>Fault injection, load testing, performance validation</td></tr>
+                <tr><td>Learning</td><td>4</td><td>Cross-project learning, pattern discovery, metrics</td></tr>
+                <tr><td>Enterprise</td><td>7</td><td>SAP, SOAP, ESB, OData, JMS/AMQP/Kafka</td></tr>
+              </tbody>
+            </table>
+
+            <p>
+              Plus <strong>7 TDD subagents</strong> (red, green, refactor,
+              code/integration/performance/security reviewers) and the
+              <strong>Fleet Commander</strong> for large-scale orchestration.
+            </p>
+
+            <h3>Intelligent Model Routing</h3>
+            <p>
+              <strong>TinyDancer</strong> routes tasks to the right model tier
+              to minimize cost without sacrificing quality. Simple tasks (type
+              additions, refactors) go to Haiku. Moderate tasks (bug fixes, test
+              generation) go to Sonnet. Critical tasks (architecture, security,
+              complex reasoning) go to Opus.
+            </p>
+
+            <h3>Pattern Learning</h3>
+            <p>
+              AQE learns from every interaction. Successful test patterns,
+              coverage strategies, and defect indicators are stored and indexed.
+              When generating tests for a new service, AQE searches for similar
+              patterns from past sessions &mdash; even across different projects.
+            </p>
+          </div>
+        </details>
+
+        <!-- 05 — WHAT SOLVED LOOKS LIKE -->
+        <details class="section" id="s05">
+          <summary>
+            <span class="num">05</span>
+            <span class="head-text">
+              <h2>What solved looks like</h2>
+              <span class="q">Ask for tests and get them &mdash; generated, validated, gated.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              After running <code>aqe init --auto</code> in your project, you
+              can ask your coding agent for quality engineering tasks in plain
+              English:
+            </p>
+            <pre class="code-block"><code>"Generate tests for src/services/PaymentService.ts with 95% coverage target"</code></pre>
+            <p>Output:</p>
+            <pre class="code-block"><code>Generated 48 tests across 4 files
+- unit/PaymentService.test.ts (32 unit tests)
+- property/PaymentValidation.property.test.ts (8 property tests)
+- integration/PaymentFlow.integration.test.ts (8 integration tests)
+Coverage: 96.2%
+Pattern reuse: 78% from learned patterns</code></pre>
+
+            <p>
+              Quality gates catch hollow tests automatically. Tautological
+              assertions like <code>expect(true).toBe(true)</code> are rejected.
+              Edge cases from historical patterns are injected into test
+              generation. This is <strong>anti-sycophancy scoring</strong> &mdash;
+              the system refuses to generate tests that pass without testing
+              anything.
+            </p>
+
+            <h3>75 Skills, Trust-Tiered</h3>
+            <p>
+              Agents draw from a library of 75 skills, each rated by trust tier:
+              49 verified (full test suite), 7 validated, 5 structured, 5
+              advisory. Skills cover core testing, accessibility, security,
+              chaos engineering, enterprise integration, and more.
+            </p>
+          </div>
+        </details>
+
+        <!-- 06 — HOW TO IMPLEMENT -->
+        <details class="section" id="s06">
+          <summary>
+            <span class="num">06</span>
+            <span class="head-text">
+              <h2>Platform support</h2>
+              <span class="q">One MCP server, 11 coding agent platforms.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              AQE works with <strong>11 coding agent platforms</strong> through
+              a single MCP server:
+            </p>
+
+            <div class="platform-badges">
+              <span class="platform-badge active">Claude Code</span>
+              <span class="platform-badge active">GitHub Copilot</span>
+              <span class="platform-badge active">Cursor</span>
+              <span class="platform-badge active">Cline</span>
+              <span class="platform-badge active">OpenCode</span>
+              <span class="platform-badge active">AWS Kiro</span>
+              <span class="platform-badge active">Kilo Code</span>
+              <span class="platform-badge active">Roo Code</span>
+              <span class="platform-badge active">OpenAI Codex CLI</span>
+              <span class="platform-badge active">Windsurf</span>
+              <span class="platform-badge active">Continue.dev</span>
+            </div>
+
+            <pre class="code-block"><code># Set up all platforms at once
+aqe init --auto --with-all-platforms
+
+# Or add a platform later
+aqe platform setup cursor
+aqe platform list       # show install status
+aqe platform verify cursor  # validate config</code></pre>
+
+            <h3>LLM Providers</h3>
+            <p>
+              AQE&rsquo;s HybridRouter auto-detects available providers. Set one
+              or more API keys and it picks the best route:
+            </p>
+            <ul>
+              <li><strong>Claude</strong> (<code>ANTHROPIC_API_KEY</code>) &mdash; default</li>
+              <li><strong>OpenAI</strong> (<code>OPENAI_API_KEY</code>)</li>
+              <li><strong>Gemini</strong> (<code>GOOGLE_AI_API_KEY</code>) &mdash; free tier available</li>
+              <li><strong>OpenRouter</strong> (<code>OPENROUTER_API_KEY</code>) &mdash; 300+ models</li>
+              <li><strong>Ollama</strong> &mdash; local, free, offline</li>
+              <li><strong>Azure OpenAI</strong>, <strong>Bedrock</strong></li>
+            </ul>
+            <p>
+              Free local-model mode: <code>export AQE_FREE_TIER=1</code> runs
+              test generation on local Ollama at <strong>$0 cost</strong>,
+              falling back to cloud only when needed.
+            </p>
+          </div>
+        </details>
+
+        <!-- 07 — HOW TO START -->
+        <details class="section" id="s07">
+          <summary>
+            <span class="num">07</span>
+            <span class="head-text">
+              <h2>How to start</h2>
+              <span class="q">Three commands and you&rsquo;re running.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <div class="install-block">
+              <h3>Quick Start</h3>
+              <pre class="code-block"><code># Install globally from npm (public, free)
+npm install -g agentic-qe
+
+# Initialize your project (auto-detects tech stack, configures MCP)
+cd your-project && aqe init --auto
+
+# That's it — MCP tools are available immediately in Claude Code</code></pre>
+              <p style="margin-top:12px;">
+                <strong>All packages are public on npm:</strong>
+                <a href="https://www.npmjs.com/package/agentic-qe" target="_blank" rel="noopener">npmjs.com/package/agentic-qe</a>
+              </p>
+            </div>
+
+            <h3>Alternative: Claude Code Plugin</h3>
+            <p>
+              For a lightweight install inside Claude Code only:
+            </p>
+            <pre class="code-block"><code># From a local checkout
+git clone https://github.com/proffesor-for-testing/agentic-qe.git
+claude --plugin-dir ./agentic-qe/plugins/agentic-qe-fleet
+
+# Or from the marketplace
+/plugin marketplace add proffesor-for-testing/agentic-qe
+/plugin install agentic-qe-fleet</code></pre>
+            <p>
+              The plugin bundles 11 agents, 9 slash commands, 9 skills, and
+              auto-registers the MCP server.
+            </p>
+
+            <h3>Development Setup</h3>
+            <pre class="code-block"><code>git clone https://github.com/proffesor-for-testing/agentic-qe.git
+cd agentic-qe
+npm install
+npm run build
+npm test -- --run</code></pre>
+            <p>
+              <a href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">
+                Full source on GitHub &rarr; github.com/proffesor-for-testing/agentic-qe
+              </a>
+            </p>
+          </div>
+        </details>
+
+        <!-- 08 — USE CASES -->
+        <details class="section" id="s08">
+          <summary>
+            <span class="num">08</span>
+            <span class="head-text">
+              <h2>Use cases</h2>
+              <span class="q">From test generation to chaos engineering to security audits.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <div class="grid">
+              <div class="card">
+                <span class="tag">Test Generation</span>
+                <h3>Generate a full test suite</h3>
+                <p>
+                  Ask <code>qe-test-architect</code> to generate unit,
+                  integration, property-based, and BDD tests for any service
+                  file. Outputs framework-specific code (Jest, Vitest, Playwright,
+                  pytest, JUnit, Go, Rust, Swift, Flutter, etc.).
+                </p>
+                <pre class="code-block"><code>"Use qe-test-architect to create tests for PaymentService with 95% coverage"</code></pre>
+              </div>
+
+              <div class="card">
+                <span class="tag">Coverage Analysis</span>
+                <h3>Find coverage gaps by risk</h3>
+                <p>
+                  <code>qe-coverage-specialist</code> finds untested code and
+                  ranks it by risk, not just line count. Critical paths get
+                  tested first.
+                </p>
+                <pre class="code-block"><code>"Find coverage gaps in src/ and prioritize by risk"</code></pre>
+              </div>
+
+              <div class="card">
+                <span class="tag">Flaky Tests</span>
+                <h3>Hunt and fix flaky tests</h3>
+                <p>
+                  <code>qe-flaky-hunter</code> uses ML-powered detection to
+                  identify non-deterministic tests, provides root-cause analysis,
+                  and suggests stabilization fixes.
+                </p>
+                <pre class="code-block"><code>"Use qe-flaky-hunter to stabilize flaky tests in tests/integration/"</code></pre>
+              </div>
+
+              <div class="card">
+                <span class="tag">Security</span>
+                <h3>Coordinate a security audit</h3>
+                <p>
+                  Combine <code>qe-security-scanner</code> (SAST/DAST),
+                  dependency scanning, API security, and chaos resilience testing
+                  in one coordinated sweep.
+                </p>
+                <pre class="code-block"><code>"Run security scan on the authentication module"</code></pre>
+              </div>
+
+              <div class="card">
+                <span class="tag">TDD</span>
+                <h3>Full Red-Green-Refactor cycle</h3>
+                <p>
+                  <code>qe-tdd-specialist</code> coordinates 5 subagents: write
+                  failing tests, implement minimal code, refactor, code review,
+                  security review.
+                </p>
+                <pre class="code-block"><code>"Use qe-tdd-specialist to implement UserAuth with full RED-GREEN-REFACTOR"</code></pre>
+              </div>
+
+              <div class="card">
+                <span class="tag">Chaos Engineering</span>
+                <h3>Inject faults and test resilience</h3>
+                <p>
+                  <code>qe-chaos-engineer</code> injects network partitions,
+                  latency spikes, and resource exhaustion to verify your system
+                  degrades gracefully.
+                </p>
+                <pre class="code-block"><code>"Use qe-chaos-engineer to inject network partitions into order workflow"</code></pre>
+              </div>
+            </div>
+
+            <h3 style="margin-top: 28px;">Full Pipeline</h3>
+            <p>
+              The Queen Coordinator can run the entire quality pipeline in one shot:
+            </p>
+            <pre class="code-block"><code>"Use qe-queen-coordinator to run full quality assessment:
+1. Generate tests for src/services/*.ts
+2. Analyze coverage gaps with risk scoring
+3. Run security scan
+4. Validate quality gate at 90% threshold
+5. Provide deployment recommendation"</code></pre>
+          </div>
+        </details>
+
+        <!-- 09 — GET IT -->
+        <details class="section" id="s09">
+          <summary>
+            <span class="num">09</span>
+            <span class="head-text">
+              <h2>Get it</h2>
+              <span class="q">All links are public. No login, no paywall, no lock-in.</span>
+            </span>
+            <span class="chev" aria-hidden="true">&rsaquo;</span>
+          </summary>
+          <div class="body">
+            <p>
+              Everything about Agentic QE is publicly available. No Vercel login,
+              no gated downloads, no auth walls. Every link below goes to a
+              public URL you can access right now.
+            </p>
+
+            <div class="grid">
+              <a class="card" href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Source Code</span>
+                <h3>GitHub Repository</h3>
+                <p>Full source, issues, discussions, and contribution guide.</p>
+                <code style="font-size:0.8em;">github.com/proffesor-for-testing/agentic-qe</code>
+              </a>
+
+              <a class="card" href="https://www.npmjs.com/package/agentic-qe" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Package</span>
+                <h3>npm Package</h3>
+                <p>Install with <code>npm install -g agentic-qe</code>. Public, free.</p>
+                <code style="font-size:0.8em;">npmjs.com/package/agentic-qe</code>
+              </a>
+
+              <a class="card" href="https://github.com/proffesor-for-testing/agentic-qe/releases" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Releases</span>
+                <h3>GitHub Releases</h3>
+                <p>All versions, changelogs, and release notes. Currently at v3.11.1.</p>
+                <code style="font-size:0.8em;">github.com/.../releases</code>
+              </a>
+
+              <a class="card" href="https://github.com/proffesor-for-testing/agentic-qe/releases/latest" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Latest Release</span>
+                <h3>v3.11.1</h3>
+                <p>Benchmark-driven cheap-first test generation. Released 2026-06-25.</p>
+                <code style="font-size:0.8em;">Latest release on GitHub</code>
+              </a>
+
+              <a class="card" href="https://github.com/proffesor-for-testing/agentic-qe/blob/main/docs/platform-setup-guide.md" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Docs</span>
+                <h3>Platform Setup Guide</h3>
+                <p>Per-platform configuration for all 11 supported coding agents.</p>
+                <code style="font-size:0.8em;">docs/platform-setup-guide.md</code>
+              </a>
+
+              <a class="card" href="https://github.com/proffesor-for-testing/agentic-qe/issues" target="_blank" rel="noopener" style="text-decoration:none;">
+                <span class="tag">Community</span>
+                <h3>Issues &amp; Discussions</h3>
+                <p>Report bugs, request features, or ask questions.</p>
+                <code style="font-size:0.8em;">Issues &middot; Discussions</code>
+              </a>
+            </div>
+
+            <h3 style="margin-top: 28px;">CLI Reference</h3>
+            <pre class="code-block"><code>aqe init [--auto]              # Initialize project
+aqe agent list                 # List available agents
+aqe fleet status               # Fleet health and coordination
+aqe learning stats             # Learning statistics
+aqe learning dream             # Trigger dream cycle
+aqe brain export/import        # Portable intelligence
+aqe platform list/setup/verify # Manage coding agent platforms
+aqe health                     # System health check
+aqe code index src/            # Index codebase into knowledge graph
+aqe code search "auth"         # Semantic code search</code></pre>
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="wrap">
+      <nav class="stack-links" aria-label="All public links">
+        <span class="stack-lead">All links &mdash; public, no login required:</span>
+        <a href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">Source repo &middot; proffesor-for-testing/agentic-qe</a>
+        <a href="https://www.npmjs.com/package/agentic-qe" target="_blank" rel="noopener">npm &middot; agentic-qe</a>
+        <a href="https://github.com/proffesor-for-testing/agentic-qe/releases" target="_blank" rel="noopener">Releases &middot; v3.11.1</a>
+        <a href="https://github.com/proffesor-for-testing/agentic-qe/issues" target="_blank" rel="noopener">Issues</a>
+        <a href="https://github.com/proffesor-for-testing/agentic-qe/discussions" target="_blank" rel="noopener">Discussions</a>
+      </nav>
+      <div>
+        Explainer for <a href="https://github.com/proffesor-for-testing/agentic-qe" target="_blank" rel="noopener">proffesor-for-testing/agentic-qe</a>
+        &middot; by
+        <a href="https://github.com/proffesor-for-testing" target="_blank" rel="noopener">Dragan Spiridonov</a>
+        and
+        <a href="https://github.com/proffesor-for-testing/agentic-qe/graphs/contributors" target="_blank" rel="noopener">contributors</a>.
+      </div>
+      <div class="prov">
+        Agentic QE Fleet is <strong>v3.11.1</strong> (latest stable release).
+        60 agents across 13 domains, 75 skills (49 verified), 11 platform
+        integrations. MIT licensed, free to use and contribute.
+      </div>
+      <div class="builder-credit">
+        Explainer page built with the
+        <a href="https://github.com/stuinfla/Ruv-Explainer" target="_blank" rel="noopener">Ruv-Explainer</a>
+        pipeline. The explainer is an independent walkthrough &mdash; not
+        affiliated with or endorsed by the project authors.
+      </div>
+    </div>
+  </footer>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
