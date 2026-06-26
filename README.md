@@ -217,8 +217,7 @@ When you paste a URL on the website, this is exactly what happens — no simulat
    ├──────────────────────────>│                              │
    │                           │  1. Validate repo (GH API)  │
    │                           │  2. Create status Gist      │
-   │                           │  3. Create tracking Issue   │
-   │                           │  4. Fire workflow_dispatch  │
+   │                           │  3. Fire workflow_dispatch  │
    │                           ├─────────────────────────────>│
    │   { buildId, gistId }     │                              │
    │<──────────────────────────│                              │
@@ -241,8 +240,7 @@ When you paste a URL on the website, this is exactly what happens — no simulat
    │   { status: "done",      │    Invite owner as           │
    │     result: {             │    collaborator              │
    │       explainerUrl,       │    ┌───────────────────┐     │
-   │       repoUrl,            │    │  Email via Resend  │     │
-   │       issueUrl            │    │  Comment on Issue   │     │
+   │       repoUrl             │    │  Email via Resend  │     │
    │     }                     │    └───────────────────┘     │
    │   }                       │                              │
    │<──────────────────────────│                              │
@@ -256,7 +254,7 @@ When you paste a URL on the website, this is exactly what happens — no simulat
 
 | Phase | What it does | Time |
 |-------|-------------|------|
-| **P0** Setup | Checkout Repo-Explainer, install Node.js 20, `npm ci` | ~30s |
+| **P0** Setup | Checkout Repo-Explainer, install Node.js 20 + jq | ~30s |
 | **P1** Clone | Shallow clone of the target repo, validate it exists | ~10s |
 | **P2** Build KB | Run the knowledge base builder — embed code and docs into a vector DB | ~60s |
 | **P3** Scaffold | Create the explainer site structure from a template | ~10s |
@@ -264,8 +262,8 @@ When you paste a URL on the website, this is exactly what happens — no simulat
 | **P5** Images | Generate hero image and section illustrations (OpenAI) | ~60s |
 | **P6** Quality gates | Run all 5 gates — KB answers, comprehension, consistency, studio, visuals | ~60s |
 | **P7** Create repo | Create `stuinfla/{repo}-explainer` on GitHub, push all files, invite owner as collaborator | ~20s |
-| **P8** Deploy | Deploy to Vercel, alias to `{repo}-explainer.vercel.app` | ~30s |
-| **P9** Notify | Comment on tracking issue with results, send email notification | ~5s |
+| **P8** Deploy | Deploy to Vercel, alias to `{repo}.repoexplainer.isovision.ai` | ~30s |
+| **P9** Notify | Update gist with final URLs, send email notification | ~5s |
 
 **Total: 5–10 minutes.** The user sees a real-time progress bar the entire time.
 
@@ -302,13 +300,13 @@ The gist is **public** — no auth needed to read it. The client polls `/api/sta
 Each explainer is **its own separate project** — a standalone GitHub repo and Vercel site:
 
 - **Your own GitHub repo**: `stuinfla/yourproject-explainer` (you get invited as a collaborator with push access)
-- **Your own Vercel URL**: `yourproject-explainer.vercel.app`
+- **Your own Vercel URL**: `yourproject.repoexplainer.isovision.ai`
 - **Your own files**: HTML, CSS, images, studio media, knowledge base — everything self-contained
 - **No shared infrastructure**: nothing depends on any other explainer or on this pipeline repo
 
 ### What happens automatically
 
-![What you get when your explainer is built: a GitHub repo (you're invited as collaborator), a live Vercel site, a tracking issue, email notification, and a PR on your README.](assets/img/what-you-get-automated.svg)
+![What you get when your explainer is built: a GitHub repo (you're invited as collaborator), a live site on your custom domain, email notification, and a PR on your README.](assets/img/what-you-get-automated.svg)
 
 <details>
 <summary>Text version (for accessibility)</summary>
@@ -321,19 +319,12 @@ Each explainer is **its own separate project** — a standalone GitHub repo and 
   │  1. GitHub repo created: stuinfla/{repo}-explainer        │
   │     └─ You are invited as collaborator (push access)      │
   │                                                           │
-  │  2. Vercel site deployed: {repo}-explainer.vercel.app     │
+  │  2. Live site deployed: {repo}.repoexplainer.isovision.ai │
   │     └─ Auto-deploys on every push to the GitHub repo      │
   │                                                           │
-  │  3. Tracking issue commented with results table:          │
-  │     ┌─────────────┬─────────────────────────────────┐     │
-  │     │ Live site    │ {repo}-explainer.vercel.app     │     │
-  │     │ Repository   │ github.com/stuinfla/{repo}-... │     │
-  │     │ Build ID     │ a1b2c3d4-...                   │     │
-  │     └─────────────┴─────────────────────────────────┘     │
+  │  3. Email notification sent (if email provided)           │
   │                                                           │
-  │  4. Email notification sent (if email provided)           │
-  │                                                           │
-  │  5. PR opened on your original repo's README              │
+  │  4. PR opened on your original repo's README              │
   │     with a badge linking to the explainer                 │
   │                                                           │
   └───────────────────────────────────────────────────────────┘
@@ -344,9 +335,9 @@ Each explainer is **its own separate project** — a standalone GitHub repo and 
 A pull request is opened on your original repo's README to add a badge:
 
 ```markdown
-[![Explainer](https://img.shields.io/badge/📖_Explainer-Visual_Walkthrough-6c3ce0?style=for-the-badge)](https://yourproject-explainer.vercel.app)
+[![Explainer](https://img.shields.io/badge/📖_Explainer-Visual_Walkthrough-6c3ce0?style=for-the-badge)](https://yourproject.repoexplainer.isovision.ai)
 
-> **New here?** This repo has a [visual explainer page](https://yourproject-explainer.vercel.app) —
+> **New here?** This repo has a [visual explainer page](https://yourproject.repoexplainer.isovision.ai) —
 > a plain-language walkthrough with architecture diagrams, audio overview, and a
 > downloadable knowledge pack for your AI assistant.
 ```
@@ -373,8 +364,7 @@ You can merge, edit, or close the PR — it's your repo, your call.
   │   ├─ styles.css                                                 │
   │   ├─ api/                       scripts/                        │
   │   │  ├─ build.js  (validate,   └─ update-gist-status.sh        │
-  │   │  │  create gist,              (gist PATCH helper)           │
-  │   │  │  dispatch workflow)                                      │
+  │   │  │  create gist, dispatch)    (gist PATCH helper)           │
   │   │  └─ status.js (read gist)  kb/                              │
   │   └─ assets/                   └─ (vector DB build scripts)     │
   │      └─ img/, screenshots/                                      │
@@ -403,7 +393,6 @@ You can merge, edit, or close the PR — it's your repo, your call.
 | **API** | Vercel Serverless Functions | Auto-scaling, zero config, same repo as the site |
 | **Pipeline** | GitHub Actions (`workflow_dispatch`) | Free 2000 min/month, runs in the cloud, no server to manage |
 | **Progress tracking** | GitHub Gists (public JSON) | Free, no database, no auth to read, updated by each pipeline phase |
-| **Issue tracking** | GitHub Issues | Audit trail for every build request, human-readable |
 | **Vector knowledge base** | RVF single-file HNSW vector DB | One file, zero server, zero Docker. Drops into any project. |
 | **Embeddings** | `bge-small-en-v1.5` (384-dim, local) | Strong retrieval, runs on a laptop, no external API. |
 | **Studio media** | Google NotebookLM | Audio overview + report that teach a true beginner. |
