@@ -83,11 +83,7 @@ jobs:
         run: ./scripts/update-gist-status.sh "$GIST_ID" 2 9 "Building knowledge base" "running"
 
       - name: "Phase 2: Build knowledge base"
-        run: |
-          echo "KB build would run here"
-          echo "Target repo: target-repo/"
-          echo "KB output: kb-output/"
-          mkdir -p kb-output
+        run: node scripts/phase2-build-kb.mjs target-repo/ kb-output/
 
       # ──────────────────────────────────────────────
       # Phase 3 — Scaffold explainer site
@@ -96,12 +92,7 @@ jobs:
         run: ./scripts/update-gist-status.sh "$GIST_ID" 3 9 "Scaffolding explainer site" "running"
 
       - name: "Phase 3: Scaffold site from template"
-        run: |
-          echo "Scaffolding explainer site for ${{ inputs.target_repo }}"
-          mkdir -p explainer-site
-          # Placeholder: copy template structure when available
-          mkdir -p explainer-site/{public,src,content}
-          echo "{\"name\": \"${{ inputs.target_repo }}-explainer\"}" > explainer-site/package.json
+        run: node scripts/phase3-scaffold.mjs kb-output/repo-analysis.json explainer-site/
 
       # ──────────────────────────────────────────────
       # Phase 4 — Author content
@@ -109,14 +100,10 @@ jobs:
       - name: "Phase 4: Update gist — authoring content"
         run: ./scripts/update-gist-status.sh "$GIST_ID" 4 9 "Authoring explainer content" "running"
 
-      - name: "Phase 4: Generate 7-section explainer content"
-        run: |
-          echo "Content authoring would run here"
-          echo "Generating 7 sections for ${{ inputs.target_repo }}"
-          for i in $(seq 1 7); do
-            mkdir -p "explainer-site/content/section-$i"
-            echo "# Section $i" > "explainer-site/content/section-$i/index.md"
-          done
+      - name: "Phase 4: Generate 9-section explainer content"
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node scripts/phase4-author-content.mjs kb-output/repo-analysis.json explainer-site/
 
       # ──────────────────────────────────────────────
       # Phase 5 — Generate images
@@ -127,10 +114,7 @@ jobs:
       - name: "Phase 5: Generate hero and section images"
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          echo "Image generation would run here"
-          echo "Using OpenAI API for hero image and section illustrations"
-          mkdir -p explainer-site/public/images
+        run: node scripts/phase5-generate-images.mjs kb-output/repo-analysis.json explainer-site/
 
       # ──────────────────────────────────────────────
       # Phase 6 — Quality gates
@@ -139,13 +123,7 @@ jobs:
         run: ./scripts/update-gist-status.sh "$GIST_ID" 6 9 "Running quality gates" "running"
 
       - name: "Phase 6: Run 5-gate quality system"
-        run: |
-          echo "Quality gates would run here"
-          echo "Gate 1: Structure validation"
-          echo "Gate 2: Content completeness"
-          echo "Gate 3: Link integrity"
-          echo "Gate 4: Accessibility check"
-          echo "Gate 5: Performance baseline"
+        run: node scripts/phase6-quality-gates.mjs explainer-site/ kb-output/repo-analysis.json
 
       # ──────────────────────────────────────────────
       # Phase 7 — Create GitHub repo and push
