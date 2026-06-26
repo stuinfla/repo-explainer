@@ -6,7 +6,7 @@
 
 *You built something powerful. Now let people actually understand it.*
 
-![Cinematic showcase of explainer pages floating above code — the project's metaphor: take something dense and technical, and turn it into something anyone can understand.](assets/img/hero-showcase.png)
+![A prism splitting a beam of white light into a clean rainbow — the project's metaphor: take something complex and intense, and separate it into something clear and beautiful.](assets/readme/hero-prism.png)
 
 **[Create your explainer →](https://repo-explainer-six.vercel.app)**&ensp;·&ensp;**[See live examples ↓](#-live-explainers)**
 
@@ -61,23 +61,23 @@ The pipeline reads your entire repository — code, docs, structure — and prod
 
 > **Paste a URL → the pipeline clones your repo, builds a knowledge base, authors a visual explainer, generates images, runs quality checks, and deploys it — all in about 6 minutes.**
 
-![The automated build pipeline: user pastes a URL, Vercel validates and dispatches to GitHub Actions, which runs 9 phases and updates a status gist that the client polls in real time.](assets/img/build-pipeline-flow.svg)
+![The automated build pipeline: user pastes a URL, Vercel validates and dispatches to GitHub Actions, which runs 9 phases and updates a status gist that the client polls in real time.](assets/diagrams/pipeline.svg)
 
 <details>
 <summary>What happens behind the scenes (9 phases)</summary>
 
 | Phase | What it does | Time |
 |-------|-------------|------|
-| **P0** Setup | Prepare the build environment | ~30s |
-| **P1** Clone | Download your repo's code and docs | ~10s |
-| **P2** Knowledge base | Embed your code into a searchable vector database | ~60s |
-| **P3** Scaffold | Create the explainer site structure | ~10s |
-| **P4** Author | Write 7 sections of plain-language content | ~90s |
-| **P5** Images | Generate hero image and section illustrations | ~60s |
-| **P6** Quality gates | Check accuracy, completeness, and visual quality | ~60s |
-| **P7** Publish | Create a GitHub repo and invite you as a collaborator | ~20s |
-| **P8** Deploy | Launch your live site at `{repo}.repoexplainer.isovision.ai` | ~30s |
-| **P9** Notify | Send you an email when it's ready | ~5s |
+| **Phase 0** Setup | Prepare the build environment | ~30s |
+| **Phase 1** Clone | Download your repo's code and docs | ~10s |
+| **Phase 2** Knowledge base | Analyze your code and embed it into a searchable vector database | ~60s |
+| **Phase 3** Scaffold | Create the explainer site structure | ~10s |
+| **Phase 4** Author | Write 9 sections of plain-language content | ~90s |
+| **Phase 5** Images | Generate hero image and section illustrations | ~60s |
+| **Phase 6** Quality gates | Check accuracy, completeness, and visual quality | ~60s |
+| **Phase 7** Publish | Create a GitHub repo and invite you as a collaborator | ~20s |
+| **Phase 8** Deploy | Launch your live site at `{repo}.repoexplainer.isovision.ai` | ~30s |
+| **Phase 9** Notify | Send you an email when it's ready | ~5s |
 
 </details>
 
@@ -118,7 +118,7 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 ### MetaHarness
 
-[![MetaHarness explainer page screenshot](assets/img/screenshots/metaharness.png)](https://metaharness-explainer.vercel.app)
+[![MetaHarness: a dull grey GitHub repo being stamped by a mint press into a glowing custom agent coin.](assets/readme/metaharness.png)](https://metaharness-explainer.vercel.app)
 
 > **Gives any project its own AI assistant that actually knows *that* project — built in about a minute.** An AI assistant is a brilliant generalist, but out of the box it's never seen your code. MetaHarness hands your AI a memory of your project, the right skills, and guardrails — automatically.
 
@@ -126,7 +126,7 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 ### PhotonLayer
 
-[![PhotonLayer explainer page screenshot](assets/img/screenshots/photonlayer.png)](https://photonlayer-explainer.vercel.app)
+[![PhotonLayer: a prism splitting a white beam into a rainbow, the metaphor for shaping light to compute an answer.](assets/readme/photonlayer.png)](https://photonlayer-explainer.vercel.app)
 
 > **A deterministic optical-AI front end: a learned phase mask shapes light so a tiny sensor captures the *answer*, not the picture.** The optics themselves do part of the computation — at the speed of light, before any chip wakes up.
 
@@ -134,7 +134,7 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 ### ruqu
 
-[![ruqu explainer page screenshot](assets/img/screenshots/ruqu.png)](https://ruqu-explainer.vercel.app)
+[![ruqu: a glowing translucent Bloch-sphere quantum orb floating above an open laptop.](assets/readme/ruqu.png)](https://ruqu-explainer.vercel.app)
 
 > **A fast quantum-computing simulator in Rust + WebAssembly — build and run quantum algorithms with no quantum hardware, right in your browser.**
 
@@ -142,7 +142,7 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 ### ruvn
 
-[![ruvn explainer page screenshot](assets/img/screenshots/ruvn.png)](https://ruvn-explainer.vercel.app)
+[![ruvn: an evidence dossier open on a desk with graded clippings A, B, C, D under a magnifying glass.](assets/readme/ruvn.png)](https://ruvn-explainer.vercel.app)
 
 > **An AI research engine that turns a question into a graded, cited evidence dossier.** Instead of one confident paragraph, you get a structured report with sources gathered, weighed, and graded.
 
@@ -150,7 +150,7 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 ### Agentic QE
 
-[![Agentic QE explainer page screenshot](assets/img/screenshots/agentic-qe.png)](https://agentic-qe-explainer.vercel.app)
+[![Agentic QE: a fleet of AI agents replacing manual software testing.](assets/readme/agentic-qe.png)](https://agentic-qe-explainer.vercel.app)
 
 > **A framework that replaces manual software testing with a fleet of AI agents — each one a specialist in a different kind of quality check.** Ship faster, catch more bugs, without a QA team bottleneck.
 
@@ -162,11 +162,11 @@ Five live explainers — each one a real project, automatically transformed. Cli
 
 Every explainer passes through **5 automated quality gates** before it goes live. The pipeline doesn't just generate content — it evaluates its own output and only ships when every gate clears.
 
-![The 5-gate quality system: gates A through E, each scoring at least 95.](assets/img/five-gates.svg)
+![The 5-gate quality system: gates A through E in sequence — knowledge base answers, comprehension and felt, consistency and dry-run, studio graded, visuals graded — each scoring at least 95.](assets/diagrams/five-gates.svg)
 
 | Gate | What it checks | The bar |
 |---|---|---|
-| **A — Knowledge base** | Can the vector DB answer real questions about the repo accurately? | Score >= 95 |
+| **A — Knowledge base** | Can the vector database answer real questions about the repo accurately? | Score >= 95 |
 | **B — Comprehension** | Would a newcomer walk away thinking *"I get it and I want this"*? | Yes on all 3 checks |
 | **C — Consistency** | Are all claims grounded in source? Do all links work? | Pass / fail |
 | **D — Studio media** | Is the audio overview clear, confident, and complete? | Score >= 95 |
@@ -180,10 +180,12 @@ The headline quality score is always the **lowest gate**. An explainer is only a
 
 Every explainer also produces a **drop-in knowledge pack** for AI assistants. It has two halves:
 
-![One download, two halves: an explainer website for humans on the left, and a drop-in smart zip for your AI on the right.](assets/img/dual-hero-output.png)
+![Two artifacts side by side: on the left a "For Humans" book — the explainer website; on the right a "For Your AI" folder — the drop-in smart zip — both being lifted out of one download.](assets/readme/dual-hero-output.png)
+
+![The dual-hero output — an explainer website for humans and a drop-in smart zip for your AI, each labeled with what it contains.](assets/diagrams/dual-hero.svg)
 
 - **`for-humans/`** — the written primer, audio overview, infographic, and deep-dive report
-- **`for-ai/`** — a vector knowledge base of the repo's code and docs, plus a search tool and MCP server
+- **`for-ai/`** — a vector knowledge base of the repo's code and docs, plus a search tool and a Model Context Protocol server
 
 Wire the `for-ai/` half into Claude Code or Cursor, and your AI answers from the **real source** instead of guessing. No more hallucinated APIs or invented function signatures.
 
@@ -194,14 +196,14 @@ Wire the `for-ai/` half into Claude Code or Cursor, and your AI answers from the
 | Layer | Tool | Why |
 |---|---|---|
 | **Website** | Vanilla HTML/CSS/JS on Vercel | Zero dependencies, instant load, works everywhere |
-| **API** | Vercel Serverless Functions | Auto-scaling, same repo as the site |
+| **Server** | Vercel Serverless Functions | Auto-scaling, same repo as the site |
 | **Pipeline** | GitHub Actions | Free compute, runs in the cloud, no server to manage |
-| **Progress** | GitHub Gists (public JSON) | No database needed, updated by each pipeline phase |
-| **Knowledge base** | RVF single-file HNSW vector DB | One file, zero Docker, drops into any project |
-| **Embeddings** | `bge-small-en-v1.5` (384-dim, local) | Strong retrieval, runs on a laptop |
+| **Progress tracking** | GitHub Gists (public JSON file) | No database needed, updated by each pipeline phase |
+| **Knowledge base** | RVF single-file vector database | One file, zero Docker, drops into any project |
+| **Embeddings** | `bge-small-en-v1.5` (384-dimensional, local) | Strong retrieval, runs on a laptop |
 | **Studio media** | Google NotebookLM | Audio overview and report that teach a true beginner |
 | **Images** | OpenAI gpt-image-1 | Hero images and section illustrations |
-| **Email** | Resend API | Notification when your explainer is ready |
+| **Email** | Resend | Notification when your explainer is ready |
 
 ---
 
