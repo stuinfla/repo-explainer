@@ -1,6 +1,6 @@
 /* =============================================================================
-   POST /api/build — Validate a GitHub repo, create a tracking issue,
-   provision a status gist, and trigger the build pipeline.
+   POST /api/build — Validate a GitHub repo, provision a status gist,
+   and trigger the build pipeline via workflow_dispatch.
    Vercel Serverless Function (Node.js runtime).
    ========================================================================== */
 
@@ -129,11 +129,6 @@ module.exports = async function handler(req, res) {
     );
   }
 
-  const description = repoData.description || "No description provided.";
-  const stars = repoData.stargazers_count || 0;
-  const language = repoData.language || "Not specified";
-  const repoUrl = repoData.html_url;
-
   // Generate build ID
   const buildId = crypto.randomUUID();
 
@@ -180,59 +175,6 @@ module.exports = async function handler(req, res) {
     );
   }
 
-  // Create tracking issue
-  const issueTitle = "Explainer request: " + fullName;
-  const issueBody = [
-    "## Explainer Request",
-    "",
-    "| Field | Value |",
-    "| --- | --- |",
-    "| **Repository** | [" + fullName + "](" + repoUrl + ") |",
-    "| **Description** | " + description.replace(/\|/g, "\\|") + " |",
-    "| **Language** | " + language + " |",
-    "| **Stars** | " + stars + " |",
-    "| **Build ID** | `" + buildId + "` |",
-    "| **Status Gist** | [View](https://gist.github.com/" + gistId + ") |",
-    "",
-    "### Next steps",
-    "",
-    "1. Run the Repo-Primer Pipeline against this repo.",
-    "2. Build the explainer site and smart zip.",
-    "3. Run all 5 quality gates (target: 95+).",
-    "4. Deploy to Vercel and create the GitHub repo.",
-    "5. Invite the repo author as a collaborator on the explainer repo.",
-    "",
-    "---",
-    "*Submitted via [Repo Explainer](https://repo-explainer-six.vercel.app).*",
-  ].join("\n");
-
-  let issueUrl = null;
-  let issueNumber = null;
-  try {
-    const issueRes = await fetch(
-      "https://api.github.com/repos/stuinfla/Repo-Explainer/issues",
-      {
-        method: "POST",
-        headers: ghHeaders(token),
-        body: JSON.stringify({
-          title: issueTitle,
-          body: issueBody,
-          labels: ["explainer-request"],
-        }),
-      }
-    );
-    if (issueRes.ok) {
-      const issueData = await issueRes.json();
-      issueUrl = issueData.html_url;
-      issueNumber = issueData.number;
-    } else {
-      const errBody = await issueRes.text();
-      console.error("GitHub issue creation failed:", issueRes.status, errBody);
-    }
-  } catch (err) {
-    console.error("Issue creation error:", err);
-  }
-
   // Trigger the build pipeline via workflow_dispatch
   const workflowInputs = {
     target_owner: owner,
@@ -240,9 +182,6 @@ module.exports = async function handler(req, res) {
     build_id: buildId,
     gist_id: gistId,
   };
-  if (issueNumber !== null) {
-    workflowInputs.issue_number = String(issueNumber);
-  }
   if (email && typeof email === "string" && email.includes("@")) {
     workflowInputs.submitter_email = email;
   }
@@ -259,9 +198,17 @@ module.exports = async function handler(req, res) {
     if (!workflowRes.ok && workflowRes.status !== 204) {
       const errBody = await workflowRes.text();
       console.error("Workflow dispatch failed:", workflowRes.status, errBody);
+      res.writeHead(502, corsHeaders());
+      return res.end(
+        JSON.stringify({ error: "Failed to start the build pipeline. Please try again." })
+      );
     }
   } catch (err) {
     console.error("Workflow dispatch error:", err);
+    res.writeHead(502, corsHeaders());
+    return res.end(
+      JSON.stringify({ error: "Failed to start the build pipeline. Please try again." })
+    );
   }
 
   const response = {
@@ -271,9 +218,6 @@ module.exports = async function handler(req, res) {
     gistId: gistId,
     repoName: fullName,
   };
-  if (issueUrl) {
-    response.issueUrl = issueUrl;
-  }
 
   res.writeHead(200, corsHeaders());
   return res.end(JSON.stringify(response));

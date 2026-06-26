@@ -23,10 +23,6 @@ on:
         description: Email to notify when done
         required: false
         type: string
-      issue_number:
-        description: Tracking issue number
-        required: false
-        type: string
 
 env:
   BUILD_ID: ${{ inputs.build_id }}
@@ -34,7 +30,7 @@ env:
   TARGET_OWNER: ${{ inputs.target_owner }}
   TARGET_REPO: ${{ inputs.target_repo }}
   EXPLAINER_REPO: stuinfla/${{ inputs.target_repo }}-explainer
-  EXPLAINER_DOMAIN: ${{ inputs.target_repo }}-explainer.vercel.app
+  EXPLAINER_DOMAIN: ${{ inputs.target_repo }}.repoexplainer.isovision.ai
   GH_PAT: ${{ secrets.GH_PAT }}
   STARTED_AT: ""
 
@@ -215,8 +211,7 @@ jobs:
           RESULT=$(jq -n \
             --arg explainerUrl "https://$EXPLAINER_DOMAIN" \
             --arg repoUrl "https://github.com/$EXPLAINER_REPO" \
-            --arg issueUrl "https://github.com/${{ github.repository }}/issues/${{ inputs.issue_number }}" \
-            '{explainerUrl: $explainerUrl, repoUrl: $repoUrl, issueUrl: $issueUrl}')
+            '{explainerUrl: $explainerUrl, repoUrl: $repoUrl}')
 
           PAYLOAD=$(jq -n \
             --arg buildId "$BUILD_ID" \
@@ -240,26 +235,6 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -d "$GIST_BODY" \
             "https://api.github.com/gists/$GIST_ID"
-
-      - name: "Phase 9: Comment on tracking issue"
-        if: inputs.issue_number != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh issue comment "${{ inputs.issue_number }}" \
-            --repo "${{ github.repository }}" \
-            --body "$(cat <<EOF
-          ## Explainer Ready
-
-          | Item | Link |
-          |------|------|
-          | Live site | [https://$EXPLAINER_DOMAIN](https://$EXPLAINER_DOMAIN) |
-          | Repository | [github.com/$EXPLAINER_REPO](https://github.com/$EXPLAINER_REPO) |
-          | Build ID | \`$BUILD_ID\` |
-
-          Generated from [${{ inputs.target_owner }}/${{ inputs.target_repo }}](https://github.com/${{ inputs.target_owner }}/${{ inputs.target_repo }}).
-          EOF
-          )"
 
       - name: "Phase 9: Send email notification"
         if: inputs.submitter_email != '' && env.HAS_RESEND == 'true'
@@ -293,20 +268,3 @@ jobs:
             "$GIST_ID" 0 9 "$FAILED_STEP" "failed" \
             "Build failed at step: $FAILED_STEP. See workflow run for details."
 
-      - name: "On failure: comment on tracking issue"
-        if: failure() && inputs.issue_number != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-        run: |
-          gh issue comment "${{ inputs.issue_number }}" \
-            --repo "${{ github.repository }}" \
-            --body "$(cat <<EOF
-          ## Explainer Build Failed
-
-          | Item | Detail |
-          |------|--------|
-          | Build ID | \`$BUILD_ID\` |
-          | Target | ${{ inputs.target_owner }}/${{ inputs.target_repo }} |
-          | Workflow run | [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
-          EOF
-          )"

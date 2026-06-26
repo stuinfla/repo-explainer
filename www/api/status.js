@@ -88,6 +88,10 @@ module.exports = async function handler(req, res) {
     );
   }
 
+  if (gistData.updated_at) {
+    status.updatedAt = gistData.updated_at;
+  }
+
   res.writeHead(200, corsHeaders());
   return res.end(JSON.stringify(status));
 };

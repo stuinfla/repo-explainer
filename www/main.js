@@ -155,18 +155,6 @@
       wrap.appendChild(p2);
     }
 
-    if (data.issueUrl) {
-      var p3 = document.createElement("p");
-      var a3 = document.createElement("a");
-      a3.href = data.issueUrl;
-      a3.target = "_blank";
-      a3.rel = "noopener";
-      a3.className = "output-link";
-      a3.textContent = "Build details →";
-      p3.appendChild(a3);
-      wrap.appendChild(p3);
-    }
-
     outputDesc.appendChild(wrap);
   }
 
@@ -278,31 +266,8 @@
           var gistId    = data.gistId    || "";
           var repoName  = data.repoName  || fullName;
 
-          // If no buildId, the pipeline dispatch isn't live yet — show confirmation
           if (!buildId) {
-            outputTitle.textContent = "Explainer requested for " + repoName;
-            outputDesc.textContent = "";
-            var msgP = document.createElement("p");
-            msgP.textContent = data.message || "Your request has been received and will be processed.";
-            outputDesc.appendChild(msgP);
-            if (data.issueUrl) {
-              var linkP = document.createElement("p");
-              var a = document.createElement("a");
-              a.href = data.issueUrl;
-              a.target = "_blank";
-              a.rel = "noopener";
-              a.className = "output-link output-link-primary";
-              a.textContent = "Track your request on GitHub →";
-              linkP.appendChild(a);
-              outputDesc.appendChild(linkP);
-            }
-            var infoP = document.createElement("p");
-            infoP.style.cssText = "margin-top:12px;font-size:0.85rem;opacity:0.7;";
-            infoP.textContent = "The pipeline will clone your repo, build a knowledge base, author a visual explainer, generate images, run 5 quality gates, and deploy it. Estimated time: 5–10 minutes. You’ll be notified when it’s ready.";
-            outputDesc.appendChild(infoP);
-            submitBtn.disabled = false;
-            urlInput.disabled = false;
-            if (emailInput) emailInput.disabled = false;
+            showFailureResult("Server did not return a build ID. Please try again.");
             return;
           }
 
@@ -316,6 +281,11 @@
           var consecutiveErrors = 0;
           var currentDelay = 5000;
           var stopped = false;
+          var MAX_WAIT_MS = 15 * 60 * 1000;
+          var MAX_CONSECUTIVE_ERRORS = 10;
+          var STALE_THRESHOLD_MS = 3 * 60 * 1000;
+          var lastProgressStep = -1;
+          var lastProgressTime = Date.now();
 
           // Elapsed clock — update every second with estimated remaining
           elapsedInterval = setInterval(function () {
@@ -337,6 +307,12 @@
           function poll() {
             if (stopped) return;
 
+            if (Date.now() - startTime > MAX_WAIT_MS) {
+              stopTracking();
+              showFailureResult("Build timed out after 15 minutes. The pipeline may still be running — check back shortly or try again.");
+              return;
+            }
+
             var statusUrl = "/api/status?id=" +
               encodeURIComponent(buildId) +
               "&gist=" + encodeURIComponent(gistId);
@@ -348,8 +324,16 @@
                 consecutiveErrors = 0;
                 currentDelay = 5000;
 
-                // Update step statuses
                 var currentStep = typeof statusData.step === "number" ? statusData.step : -1;
+
+                if (currentStep > lastProgressStep) {
+                  lastProgressStep = currentStep;
+                  lastProgressTime = Date.now();
+                } else if (Date.now() - lastProgressTime > STALE_THRESHOLD_MS) {
+                  stopTracking();
+                  showFailureResult("Build appears stuck — no progress for 3 minutes. The pipeline may have encountered an issue. Please try again.");
+                  return;
+                }
                 for (var i = 0; i < ui.stepEls.length; i++) {
                   if (i < currentStep) {
                     setStepStatus(ui.stepEls[i], "done");
@@ -376,8 +360,7 @@
                   var result = statusData.result || {};
                   showSuccessResult({
                     siteUrl:  result.explainerUrl || "",
-                    repoUrl:  result.repoUrl      || "",
-                    issueUrl: result.issueUrl      || data.issueUrl || ""
+                    repoUrl:  result.repoUrl      || ""
                   });
                   return;
                 }
@@ -395,12 +378,15 @@
                 pollTimer = setTimeout(poll, currentDelay);
               })
               .catch(function () {
-                // Network error
                 consecutiveErrors++;
-                if (consecutiveErrors >= 3) {
-                  outputDesc.textContent = "Lost connection — retrying…";
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                  stopTracking();
+                  showFailureResult("Lost connection to the build server after multiple attempts. Please check your internet connection and try again.");
+                  return;
                 }
-                // Exponential backoff: 5s -> 10s -> 20s (capped)
+                if (consecutiveErrors >= 3) {
+                  outputDesc.textContent = "Lost connection — retrying… (" + consecutiveErrors + "/" + MAX_CONSECUTIVE_ERRORS + ")";
+                }
                 currentDelay = Math.min(currentDelay * 2, 20000);
                 pollTimer = setTimeout(poll, currentDelay);
               });
