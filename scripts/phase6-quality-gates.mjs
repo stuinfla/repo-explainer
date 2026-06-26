@@ -102,7 +102,7 @@ function gateB() {
       heroContent.includes(nameLower) ? 'Found in hero' : `"${projName}" not in hero section`));
   }
 
-  const placeholders = (html.match(/<!-- CONTENT: [^>]* -->/g) || []).length;
+  const placeholders = (html.match(/<!-- CONTENT:\S+ -->/g) || []).length;
   const sectionsOk = placeholders <= 4; // at most 4 of 9 remaining = at least 5 filled
   checks.push(check('At least 5/9 sections filled', sectionsOk,
     `${9 - placeholders}/9 sections have content (${placeholders} placeholders remain)`));
