@@ -48,9 +48,8 @@ const navLinks = sections.filter(s => s.id !== 'hero')
   .map(s => `        <a href="#${s.id}">${s.label}</a>`).join('\n');
 const sectionBlocks = sections.map(s => {
   if (s.id === 'hero') return `  <section id="hero" class="hero" data-section="hero">
-    <div class="hero-bg"></div>
+    <div class="hero-bg" aria-hidden="true"></div>
     <div class="wrap hero-inner">
-      <!-- CONTENT:hero -->
       <h1>${repoName}</h1>
       <p class="tagline">${repoDesc}</p>
       <div class="hero-actions">
@@ -60,11 +59,19 @@ const sectionBlocks = sections.map(s => {
     </div>
   </section>`;
   const alt = altSections.has(s.id) ? ' section-alt' : '';
+  // Gallery is populated by Phase 5 from generated images (no Phase 4 content).
+  if (s.id === 'gallery') return `  <section id="gallery" class="section${alt}" data-section="gallery">
+    <div class="wrap">
+      <h2>${s.label}</h2>
+      <div class="gallery-grid"><!-- IMG:gallery --></div>
+    </div>
+  </section>`;
+  // Heading first, then a single content marker Phase 4 replaces. No leftover
+  // placeholder text, no duplicate headings.
   return `  <section id="${s.id}" class="section${alt}" data-section="${s.id}">
     <div class="wrap">
-      <!-- CONTENT:${s.id} -->
       <h2>${s.label}</h2>
-      <p>Content will be filled in by Phase 4.</p>
+      <!-- CONTENT:${s.id} -->
     </div>
   </section>`;
 }).join('\n\n');
@@ -81,7 +88,9 @@ const indexHtml = `<!doctype html>
   <meta property="og:type" content="website" />
   <meta property="og:title" content="${repoName} — Explainer" />
   <meta property="og:description" content="${repoDesc}" />
+  <meta property="og:image" content="assets/img/hero.png" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="assets/img/hero.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
@@ -200,7 +209,11 @@ p { margin-bottom: var(--sp-4); }
   background: var(--bg-hero); color: var(--ink-on-dark);
   overflow: hidden; min-height: 480px; display: flex; align-items: center;
 }
-.hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0.3; }
+.hero-bg {
+  position: absolute; inset: 0;
+  background-image: url('assets/img/hero.png');
+  background-size: cover; background-position: center; opacity: 0.35;
+}
 .hero-inner { position: relative; z-index: 1; }
 .hero h1 { color: var(--ink-on-dark); margin-bottom: var(--sp-4); }
 .hero .tagline { color: rgba(240,238,232,0.85); margin-bottom: var(--sp-8); }

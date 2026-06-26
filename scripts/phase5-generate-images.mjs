@@ -41,8 +41,10 @@ const NO_TEXT = 'No text, no logos, no words, no watermarks, no UI elements.';
 
 const images = [
   {
+    // gpt-image-1 supports only 1024x1024, 1024x1536, 1536x1024, and auto.
+    // 1536x1024 is the widest landscape option — ideal for a hero banner.
     name: 'hero.png',
-    size: '1792x1024',
+    size: '1536x1024',
     prompt: `A cinematic, professional, clean, modern illustration representing "${context}". Show an abstract, visually striking scene that conveys ${techContext} technology and innovation. Use a rich color palette with depth, lighting, and atmosphere. ${NO_TEXT} Style: editorial illustration, high production value, suitable as a website hero banner.`,
   },
   {
@@ -101,52 +103,58 @@ for (let i = 0; i < images.length; i++) {
 }
 
 // ── Patch index.html ────────────────────────────────────────────────────────
+//
+// Two integration points, both designed to degrade gracefully if an image
+// failed to generate:
+//   1. Hero — wired purely via CSS (`.hero-bg { background-image: hero.png }`)
+//      by Phase 3, so a missing hero.png simply 404s and leaves the dark hero.
+//      Nothing to patch here.
+//   2. Gallery — Phase 3 leaves a `<!-- IMG:gallery -->` marker inside the
+//      gallery grid. We replace it with <figure> tiles for the diagram images
+//      that actually generated, or a tasteful note if none did. A failed image
+//      is therefore never rendered as a broken <img>.
 
-function patchSection(html, imgFile, sectionIds) {
-  for (const id of sectionIds) {
-    const re = new RegExp(`(id="${id}"[\\s\\S]*?<img\\s+[^>]*src=")([^"]+)(")`);
-    if (re.test(html)) return { html: html.replace(re, `$1assets/img/${imgFile}$3`), found: true };
-  }
-  return { html, found: false };
+function escapeAttr(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+const GALLERY_MARKER = '<!-- IMG:gallery -->';
+const galleryDefs = [
+  { file: 'architecture.png', caption: 'System architecture' },
+  { file: 'use-case.png',     caption: 'In practice' },
+];
 
 const indexPath = path.join(absSite, 'index.html');
 
-if (generated.length > 0 && fs.existsSync(indexPath)) {
-  console.log('\nPatching index.html with generated images...');
+if (fs.existsSync(indexPath)) {
   let html = fs.readFileSync(indexPath, 'utf8');
-  let patched = false;
+
+  if (html.includes(GALLERY_MARKER)) {
+    const tiles = galleryDefs.filter(g => generated.includes(g.file));
+    let replacement;
+    if (tiles.length > 0) {
+      replacement = tiles.map(g =>
+        `<figure class="gallery-item">\n` +
+        `        <img src="assets/img/${g.file}" alt="${escapeAttr(projectName)} — ${g.caption}" loading="lazy" width="1024" height="1024" />\n` +
+        `        <figcaption>${escapeAttr(g.caption)}</figcaption>\n` +
+        `      </figure>`
+      ).join('\n      ');
+    } else {
+      replacement = '<p class="text-muted">Visual diagrams for this project are coming soon.</p>';
+    }
+    html = html.replace(GALLERY_MARKER, replacement);
+    fs.writeFileSync(indexPath, html);
+    console.log(`\nGallery populated with ${tiles.length} image(s): ${tiles.map(t => t.file).join(', ') || 'none'}.`);
+  } else {
+    console.log('\nGallery marker (<!-- IMG:gallery -->) not found — skipping gallery patch.');
+  }
 
   if (generated.includes('hero.png')) {
-    // Hero img inside hero section
-    const heroRe = /(<(?:section|div)[^>]*class="[^"]*hero[^"]*"[^>]*>[\s\S]*?<img\s+[^>]*src=")([^"]+)("[^>]*>)/;
-    if (heroRe.test(html)) { html = html.replace(heroRe, `$1assets/img/hero.png$3`); patched = true; }
-    // Background-image variant
-    const bgRe = /(class="[^"]*hero[^"]*"[^>]*style="[^"]*background-image:\s*url\()([^)]+)(\))/;
-    if (bgRe.test(html)) { html = html.replace(bgRe, `$1assets/img/hero.png$3`); patched = true; }
-    // og:image meta
-    const ogRe = /(<meta\s+property="og:image"\s+content=")([^"]+)(")/;
-    if (ogRe.test(html)) { html = html.replace(ogRe, `$1assets/img/hero.png$3`); patched = true; }
-  }
-
-  if (generated.includes('architecture.png')) {
-    const r = patchSection(html, 'architecture.png', ['how-it-works', 'architecture', 'how', 'pipeline', 's04']);
-    html = r.html; patched = patched || r.found;
-  }
-
-  if (generated.includes('use-case.png')) {
-    const r = patchSection(html, 'use-case.png', ['use-cases', 'use-case', 'benefits', 'solved', 's05']);
-    html = r.html; patched = patched || r.found;
-  }
-
-  if (patched) {
-    fs.writeFileSync(indexPath, html);
-    console.log('  index.html updated with image references.');
+    console.log('Hero image generated — wired via CSS background (assets/img/hero.png).');
   } else {
-    console.log('  No matching sections found to patch (images are still saved).');
+    console.log('Hero image not generated — hero falls back to its dark gradient.');
   }
-} else if (generated.length === 0) {
-  console.log('\nNo images were generated. Site will use fallback styling.');
 } else {
   console.log('\nNo index.html found to patch. Images saved to assets/img/.');
 }

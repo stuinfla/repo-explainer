@@ -172,14 +172,39 @@ jobs:
           npm i -g vercel@latest
 
           cd explainer-site
-          vercel pull --yes --token "$VERCEL_TOKEN" 2>/dev/null || true
-          DEPLOYMENT_URL=$(vercel deploy --prod --yes --token "$VERCEL_TOKEN" 2>&1 | tail -1)
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN" >/dev/null 2>&1 || true
+
+          # Deploy. Capture stdout separately and DO NOT let a pipe mask the exit
+          # code — the previous `| tail -1` swallowed failures and shipped an
+          # error string as the URL.
+          set +e
+          DEPLOY_OUT=$(vercel deploy --prod --yes --token "$VERCEL_TOKEN" 2>deploy.err)
+          DEPLOY_RC=$?
+          set -e
+
+          DEPLOYMENT_URL=$(printf '%s\n' "$DEPLOY_OUT" | grep -Eo 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
+
+          if [ "$DEPLOY_RC" -ne 0 ] || [ -z "$DEPLOYMENT_URL" ]; then
+            echo "::error::Vercel deploy failed (exit $DEPLOY_RC, no deployment URL parsed)."
+            echo "----- vercel stdout -----"; printf '%s\n' "$DEPLOY_OUT"
+            echo "----- vercel stderr -----"; cat deploy.err 2>/dev/null || true
+            exit 1
+          fi
           echo "Deployed to: $DEPLOYMENT_URL"
 
-          vercel alias set "$DEPLOYMENT_URL" "$EXPLAINER_DOMAIN" --token "$VERCEL_TOKEN" \
-            || echo "::warning::Alias failed — site is still live at $DEPLOYMENT_URL"
+          # Best-effort alias to the custom domain (may not be configured yet).
+          # The site is already live at the deployment URL regardless.
+          if vercel alias set "$DEPLOYMENT_URL" "$EXPLAINER_DOMAIN" --token "$VERCEL_TOKEN" 2>alias.err; then
+            LIVE_URL="https://$EXPLAINER_DOMAIN"
+            echo "Aliased to $LIVE_URL"
+          else
+            LIVE_URL="$DEPLOYMENT_URL"
+            echo "::warning::Alias to $EXPLAINER_DOMAIN not set yet (DNS/domain pending); site live at $DEPLOYMENT_URL"
+            cat alias.err 2>/dev/null || true
+          fi
 
           echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> "$GITHUB_ENV"
+          echo "LIVE_URL=$LIVE_URL" >> "$GITHUB_ENV"
 
       # ──────────────────────────────────────────────
       # Phase 9 — Notify
@@ -187,7 +212,7 @@ jobs:
       - name: "Phase 9: Update gist — done"
         run: |
           RESULT=$(jq -n \
-            --arg explainerUrl "https://$EXPLAINER_DOMAIN" \
+            --arg explainerUrl "${LIVE_URL:-https://$EXPLAINER_DOMAIN}" \
             --arg repoUrl "https://github.com/$EXPLAINER_REPO" \
             '{explainerUrl: $explainerUrl, repoUrl: $repoUrl}')
 
@@ -223,9 +248,10 @@ jobs:
           EMAIL_TO: ${{ inputs.submitter_email }}
           EMAIL_SUBJECT: "Your explainer for ${{ inputs.target_owner }}/${{ inputs.target_repo }} is ready!"
         run: |
+          SITE_URL="${LIVE_URL:-https://$EXPLAINER_DOMAIN}"
           EMAIL_HTML="<h2>Your Repo Explainer is ready</h2>"
           EMAIL_HTML="$EMAIL_HTML<p>Repository: <a href=\"https://github.com/$EXPLAINER_REPO\">$EXPLAINER_REPO</a></p>"
-          EMAIL_HTML="$EMAIL_HTML<p>Live site: <a href=\"https://$EXPLAINER_DOMAIN\">https://$EXPLAINER_DOMAIN</a></p>"
+          EMAIL_HTML="$EMAIL_HTML<p>Live site: <a href=\"$SITE_URL\">$SITE_URL</a></p>"
           export EMAIL_HTML
           node scripts/phase9-send-email.mjs
 
