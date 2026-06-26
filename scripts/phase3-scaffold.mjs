@@ -219,14 +219,18 @@ p { margin-bottom: var(--sp-4); }
 .hero-bg {
   position: absolute; inset: 0; z-index: 0;
   background-image: url('assets/img/hero.png');
-  background-size: cover; background-position: center; opacity: 0.4;
+  background-size: cover; background-position: center; opacity: 0.85;
 }
-/* Scrim over the hero image so headline text is always legible. */
+/* Bottom-weighted scrim: lets the generated image dominate up top while
+   guaranteeing the headline/tagline stay legible where the text sits. */
 .hero::after {
   content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(180deg, rgba(27,31,46,0.35) 0%, rgba(27,31,46,0.78) 100%);
+  background: linear-gradient(180deg,
+    rgba(27,31,46,0.20) 0%, rgba(27,31,46,0.45) 55%, rgba(27,31,46,0.85) 100%);
 }
 .hero-inner { position: relative; z-index: 2; }
+.hero h1 { text-shadow: 0 2px 16px rgba(0,0,0,0.55); }
+.hero .tagline { text-shadow: 0 1px 10px rgba(0,0,0,0.5); }
 .hero h1 { color: var(--ink-on-dark); margin-bottom: var(--sp-4); }
 .hero .tagline { color: rgba(240,238,232,0.85); margin-bottom: var(--sp-8); }
 .hero-actions { display: flex; gap: var(--sp-4); flex-wrap: wrap; }

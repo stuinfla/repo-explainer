@@ -184,6 +184,9 @@ for (const m of Object.values(manifests)) {
   if (m?.description) repoDesc = m.description;
   if (m?.keywords) topics.push(...m.keywords);
 }
+// The repository name the user actually submitted is authoritative — never ship
+// the clone directory name ("target-repo") or a mismatched manifest name.
+if (process.env.TARGET_REPO) repoName = process.env.TARGET_REPO;
 
 // Key files (README)
 const keyFiles = {};

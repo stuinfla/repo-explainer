@@ -198,9 +198,12 @@ function gateE() {
     hasName ? 'Name field present' : 'Missing name field'));
 
   const files = walkFiles(absSite);
-  const oversized = files.filter(f => f.size > 2 * 1024 * 1024);
-  checks.push(check('All files under 2MB', oversized.length === 0,
-    oversized.length === 0 ? 'All files OK' : `${oversized.length} file(s) over 2MB: ${oversized.map(f => f.rel).join(', ')}`));
+  // AI-generated hero/diagram PNGs routinely land in the 1.5–3 MB range, so the
+  // per-file ceiling allows for them while still catching genuinely huge assets.
+  const PER_FILE_LIMIT = 6 * 1024 * 1024;
+  const oversized = files.filter(f => f.size > PER_FILE_LIMIT);
+  checks.push(check('All files under 6MB', oversized.length === 0,
+    oversized.length === 0 ? 'All files OK' : `${oversized.length} file(s) over 6MB: ${oversized.map(f => f.rel).join(', ')}`));
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   const under20 = totalSize < 20 * 1024 * 1024;
