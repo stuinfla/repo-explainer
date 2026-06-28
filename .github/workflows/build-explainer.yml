@@ -66,11 +66,15 @@ jobs:
 
       - name: "Phase 1: Shallow clone target repo"
         run: |
+          # Authenticated clone so private repos the token can access also work.
+          # GH_PAT is a masked secret; the token never appears in logs.
+          # Uses pre-validated env vars (not ${{ }} interpolation) to avoid
+          # any shell-injection surface from the dispatch inputs.
           git clone --depth 1 \
-            "https://github.com/${{ inputs.target_owner }}/${{ inputs.target_repo }}.git" \
+            "https://x-access-token:${GH_PAT}@github.com/${TARGET_OWNER}/${TARGET_REPO}.git" \
             target-repo
           if [ ! -d "target-repo" ]; then
-            echo "::error::Target repo not found: ${{ inputs.target_owner }}/${{ inputs.target_repo }}"
+            echo "::error::Could not clone ${TARGET_OWNER}/${TARGET_REPO} — repo missing or token lacks access."
             exit 1
           fi
           echo "Target repo cloned successfully"

@@ -91,18 +91,25 @@ module.exports = async function handler(req, res) {
     );
   }
 
-  // Validate the repo exists and is public
+  // Validate the repo exists and is accessible to our GitHub token.
+  // Authenticated so the token's own private repos are visible (GitHub
+  // returns 404 — not 403 — for private repos to anonymous callers).
   let repoData;
   try {
     const ghRes = await fetch(
       "https://api.github.com/repos/" + owner + "/" + repo,
-      { headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "repo-explainer-bot" } }
+      { headers: ghHeaders(token) }
     );
     if (ghRes.status === 404) {
       res.writeHead(404, corsHeaders());
       return res.end(
         JSON.stringify({
-          error: "Repository not found. Make sure the URL points to a public GitHub repo.",
+          error:
+            "Couldn't find " +
+            fullName +
+            ", or the Repo Explainer GitHub account doesn't have access to it. " +
+            "Check the URL — and if it's a private repo, make sure it's owned by " +
+            "or shared with that account.",
         })
       );
     }
@@ -120,14 +127,10 @@ module.exports = async function handler(req, res) {
     );
   }
 
-  if (repoData.private) {
-    res.writeHead(400, corsHeaders());
-    return res.end(
-      JSON.stringify({
-        error: "This repository is private. Repo Explainer only works with public repos.",
-      })
-    );
-  }
+  // Private repos are allowed as long as our token can read them (validated
+  // above). We surface the privacy state so the caller knows the source is
+  // private — the explainer OUTPUT visibility is governed separately.
+  const isPrivate = Boolean(repoData.private);
 
   // Generate build ID
   const buildId = crypto.randomUUID();
@@ -217,6 +220,7 @@ module.exports = async function handler(req, res) {
     statusUrl: "/api/status?id=" + buildId + "&gist=" + gistId,
     gistId: gistId,
     repoName: fullName,
+    private: isPrivate,
   };
 
   res.writeHead(200, corsHeaders());
