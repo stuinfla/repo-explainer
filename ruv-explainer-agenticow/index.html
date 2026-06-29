@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agenticow — Git for Agent Memory</title>
+<meta name="description" content="agenticow is 'Git for Agent Memory': instead of copying an AI agent's entire vector memory to snapshot, fork, or checkpoint it, agenticow branches it — copy-on-write, like Git — so a fork, checkpoint, or rollback costs ~162 bytes and ~0.47 ms, flat. A plain-English explainer of Reuven Cohen's (@ruvnet) agenticow.">
+<meta name="author" content="Explainer for agenticow by Reuven Cohen / @ruvnet">
+<meta property="og:title" content="agenticow — Git for Agent Memory">
+<meta property="og:description" content="Branch an agent's vector memory copy-on-write — fork, checkpoint, and roll back in ~162 bytes and ~0.47 ms, flat, no matter how big the memory is. 83× faster, 3000× smaller snapshots.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/assets/img/hero.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="agenticow explainer home">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#9b8cff"/><stop offset="55%" stop-color="#2fd6c6"/>
+            <stop offset="100%" stop-color="#34e8a0"/>
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#lg)" stroke-width="2.2" stroke-linecap="round">
+          <path d="M7 22 C 14 22 14 10 21 10"/>
+          <path d="M7 22 C 14 22 15 22 23 22"/>
+        </g>
+        <circle cx="7" cy="22" r="3.1" fill="#9b8cff"/>
+        <circle cx="21" cy="10" r="2.6" fill="#34e8a0"/>
+        <circle cx="23" cy="22" r="2.6" fill="#34e8a0"/>
+      </svg>
+      <span><b>agentic</b>ow</span>
+      <span class="tag">explainer</span>
+    </a>
+    <nav>
+      <a class="hide-sm" href="#what">What it is</a>
+      <a class="hide-sm" href="#sofia">Example</a>
+      <a class="hide-sm" href="#gallery">Use cases</a>
+      <a class="hide-sm" href="#dropin">Drop-in</a>
+      <a class="ghub" href="https://github.com/ruvnet/agenticow" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow"><span class="dot"></span> Agent memory · JavaScript · by @ruvnet</span>
+        <h1>Stop copying your agent's memory. <span class="spec-text">Branch it.</span></h1>
+        <p class="lede">agenticow is <strong>"Git for Agent Memory"</strong>: instead of full-copying an AI agent's entire vector memory to snapshot, fork, or checkpoint it, agenticow <em>branches</em> it — copy-on-write, like Git.</p>
+        <p class="sub">A fork, checkpoint, or rollback costs about <strong>162 bytes and 0.47 ms</strong> — flat, no matter how big the underlying memory is. So "give every user their own memory" or "run 1,000 parallel experiments off one base" goes from a budget-buster to near-free.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#sofia">See it with a real example →</a>
+          <a class="btn btn-ghost" href="https://ruvnet.github.io/agenticow/" target="_blank" rel="noopener">Try the live demo ↗</a>
+        </div>
+
+        <div class="prov" id="prov">
+          <span class="who">By <strong>Reuven Cohen</strong> · <a href="https://github.com/ruvnet" target="_blank" rel="noopener">@ruvnet</a></span>
+          <span class="pill" id="prov-live">Updated <time datetime="2026-06-29">2026-06-29</time> · source @ <code>3d93dc3</code></span>
+          <span>MIT © ruvnet</span>
+          <a href="https://github.com/ruvnet/agenticow" target="_blank" rel="noopener">github.com/ruvnet/agenticow ↗</a>
+        </div>
+      </div>
+
+      <div>
+        <figure class="hero-figure">
+          <img src="/assets/img/hero.png" alt="A glowing version-control graph: one violet base node on the left, mint-green branch lines arcing out to many child nodes (copy-on-write branches), a few dissolving into coral dust (discarded experiments), and a small friendly cow grazing among the branches.">
+        </figure>
+        <p class="hero-figcap">one base → many cheap copy-on-write branches: fork, checkpoint, roll back, merge — like Git</p>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n">162 B</div><div class="l">per branch — constant size, independent of base size</div></div>
+      <div class="stat"><div class="n">0.47 ms</div><div class="l">to fork, flat — vs 67 ms to full-copy at 1M vectors</div></div>
+      <div class="stat"><div class="n">3000×</div><div class="l">smaller snapshots (83× faster), the headline claim</div></div>
+      <div class="stat"><div class="n">0 / 200</div><div class="l">cross-tenant leaks across 1,000 isolated tenant branches</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><hr class="spec-line"></div>
+
+<!-- ===================== SHELL: rail + content ===================== -->
+<div class="wrap">
+<div class="shell">
+
+  <!-- side rail -->
+  <aside class="rail" aria-label="Section navigation">
+    <p class="rail-h">The 7 questions</p>
+    <nav>
+      <a href="#what"><span class="num">01</span>What is this?</a>
+      <a href="#problem"><span class="num">02</span>What problem?</a>
+      <a href="#now"><span class="num">03</span>Why now?</a>
+      <a href="#how"><span class="num">04</span>How it works</a>
+      <a href="#solved"><span class="num">05</span>Solved state</a>
+      <a href="#sofia"><span class="num">06</span>Grounding example</a>
+      <a href="#gallery"><span class="num">07</span>Use-case gallery</a>
+      <a href="#vs"><span class="num">08</span>Why this vs. what I have</a>
+      <a href="#dropin"><span class="num">09</span>What's inside</a>
+      <a href="#start"><span class="num">10</span>How to start</a>
+      <a href="#limits"><span class="num">11</span>Honest limits</a>
+    </nav>
+    <button class="expand-btn" id="expand-toggle" aria-expanded="false">Expand all sections</button>
+  </aside>
+
+  <!-- content -->
+  <main>
+
+  <!-- ===== 01 — WHAT IS THIS (Q1) ===== -->
+  <section id="what">
+  <details class="sec" open>
+    <summary>
+      <span class="s-num">01</span>
+      <span class="s-head">
+        <span class="s-q">Q1 · What is this?</span>
+        <h2 class="s-title">Git, but for an AI agent's memory</h2>
+        <p class="s-sub">In one plain sentence, then grounded all the way down to earth.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in"><strong>agenticow is "Git for Agent Memory":</strong> instead of copying an AI agent's entire vector memory every time you want a private version of it, agenticow <em>branches</em> it — copy-on-write, like Git — so a fork, checkpoint, or rollback costs about half a millisecond and 162 bytes no matter how big the memory is.</p>
+
+      <p>Here's the everyday version. Modern AI agents remember things by turning text into long lists of numbers — <strong>embeddings</strong> — and storing them in a <strong>vector database</strong> so they can later find "the most similar thing I've seen before." That store <em>is</em> the agent's memory.</p>
+      <p>The expensive habit: the moment you want a <em>separate</em> version of that memory — one per customer, a throwaway sandbox to test a risky import, a safety checkpoint before a tool call — every normal vector database makes you <strong>copy the whole thing</strong>. agenticow <strong>branches</strong> it instead. A branch records <em>only its own edits</em> plus a pointer to its parent — <strong>162 bytes, constant time, independent of base size</strong>.</p>
+
+      <p>The repo's own analogy: <em>"Git doesn't make developers write better code — it lets thousands of them work concurrently, isolate mistakes, roll back, and merge through CI. agenticow is the same shape for cheap-model fleets."</em> ("COW" = <strong>C</strong>opy-<strong>O</strong>n-<strong>W</strong>rite — and yes, the name is a pun on the cow.)</p>
+
+      <!-- DUAL VISUAL: friendly raster + technical SVG -->
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/overlay-sheets.png" alt="One glowing violet base page with thin transparent mint-green overlay sheets floating above it; each overlay records only a few new marks while the base shows through untouched."></div>
+          <figcaption class="vcap">A branch is a transparent overlay over a shared base: it records only what <em>it</em> changed. The base — and every other branch — is untouched.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/></svg> Technical view — full copy vs. branch</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 230" role="img" aria-label="A full copy duplicates the whole index; a branch stores only its own edits plus a pointer to the parent base.">
+              <defs>
+                <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9b8cff"/><stop offset="1" stop-color="#34e8a0"/></linearGradient>
+                <marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L7 4L0 8z" fill="#8aa394"/></marker>
+              </defs>
+              <!-- base index -->
+              <rect x="14" y="74" width="92" height="92" rx="6" fill="#122619" stroke="#9b8cff"/>
+              <g fill="#9b8cff" opacity=".7"><rect x="24" y="84" width="9" height="9"/><rect x="38" y="84" width="9" height="9"/><rect x="52" y="84" width="9" height="9"/><rect x="66" y="84" width="9" height="9"/><rect x="80" y="84" width="9" height="9"/><rect x="24" y="98" width="9" height="9"/><rect x="38" y="98" width="9" height="9"/><rect x="52" y="98" width="9" height="9"/><rect x="66" y="98" width="9" height="9"/><rect x="80" y="98" width="9" height="9"/><rect x="24" y="112" width="9" height="9"/><rect x="38" y="112" width="9" height="9"/><rect x="52" y="112" width="9" height="9"/><rect x="66" y="112" width="9" height="9"/></g>
+              <text x="60" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3a6ff">base · 1M vectors</text>
+              <!-- top path: full copy -->
+              <text x="150" y="44" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#ff6b8a">FULL COPY (every other store)</text>
+              <line x1="108" y1="96" x2="150" y2="70" stroke="#8aa394" marker-end="url(#ar)"/>
+              <rect x="154" y="52" width="92" height="62" rx="6" fill="#122619" stroke="#ff6b8a"/>
+              <g fill="#ff6b8a" opacity=".55"><rect x="164" y="62" width="9" height="9"/><rect x="178" y="62" width="9" height="9"/><rect x="192" y="62" width="9" height="9"/><rect x="206" y="62" width="9" height="9"/><rect x="220" y="62" width="9" height="9"/><rect x="164" y="76" width="9" height="9"/><rect x="178" y="76" width="9" height="9"/><rect x="192" y="76" width="9" height="9"/><rect x="206" y="76" width="9" height="9"/><rect x="220" y="76" width="9" height="9"/><rect x="164" y="90" width="9" height="9"/><rect x="178" y="90" width="9" height="9"/><rect x="192" y="90" width="9" height="9"/></g>
+              <text x="290" y="80" font-family="JetBrains Mono, monospace" font-size="11" fill="#ff6b8a">496 MB · 67 ms</text>
+              <text x="290" y="96" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#8aa394">every single time</text>
+              <!-- bottom path: branch -->
+              <text x="150" y="146" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#34e8a0">BRANCH (agenticow)</text>
+              <line x1="108" y1="138" x2="150" y2="166" stroke="#8aa394" marker-end="url(#ar)"/>
+              <rect x="154" y="154" width="60" height="40" rx="6" fill="#0e1d16" stroke="#34e8a0"/>
+              <g fill="#34e8a0"><rect x="164" y="164" width="9" height="9"/><rect x="178" y="164" width="9" height="9" opacity=".5"/></g>
+              <text x="184" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#5cf2b6">edits only</text>
+              <!-- pointer back to base -->
+              <path d="M154 174 C 130 174 130 120 106 120" fill="none" stroke="#9b8cff" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+              <text x="120" y="206" font-family="JetBrains Mono, monospace" font-size="8" fill="#9b8cff">+ pointer → parent</text>
+              <text x="290" y="170" font-family="JetBrains Mono, monospace" font-size="11" fill="#34e8a0">162 B · 0.47 ms</text>
+              <text x="290" y="186" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#8aa394">flat, any base size</text>
+              <!-- big multiplier -->
+              <rect x="430" y="86" width="116" height="58" rx="10" fill="#0a160f" stroke="url(#bg1)"/>
+              <text x="488" y="112" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="20" fill="#eaf3ee">3000×</text>
+              <text x="488" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#8aa394">smaller snapshots</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">A full copy duplicates the whole index — <code>496 MB · 67 ms</code> at 1M vectors, every time. A branch stores <em>only its edits</em> plus a parent pointer — <code>162 B · 0.47 ms</code>, flat. (README "Why".)</figcaption>
+        </figure>
+      </div>
+
+      <div class="note honest"><span class="lab">Honest framing the repo insists on</span>agenticow is <em>"Git for agent memory, <strong>not</strong> a way to make agents smarter… The honest claim is leverage, not intelligence."</em> It's plumbing that makes running many isolated agent-memories cheap and safe — it does not improve the model's reasoning.</div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 02 — WHAT PROBLEM (Q2) ===== -->
+  <section id="problem">
+  <details class="sec">
+    <summary>
+      <span class="s-num">02</span>
+      <span class="s-head">
+        <span class="s-q">Q2 · What problem does it solve?</span>
+        <h2 class="s-title">Agents need memory that branches — but every vector DB makes you full-copy it</h2>
+        <p class="s-sub">A per-user layer, a risky-ingest sandbox, a checkpoint before a tool call, a thousand parallel experiments… each one is a whole copy.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in">The README puts it plainly: <em>"Agents need memory that branches: a per-user personalization layer, a sandbox to test a risky ingest, a checkpoint before a tool call, a thousand parallel experiments off one shared base. With a normal vector DB each of those is a <strong>full copy</strong> of the whole index."</em></p>
+
+      <table class="tbl">
+        <thead><tr><th>What you actually want</th><th>What a normal vector DB forces</th></tr></thead>
+        <tbody>
+          <tr><td class="after"><strong>A private memory per user</strong></td><td class="before">A full copy of the index for every user — hundreds of MB each.</td></tr>
+          <tr><td class="after"><strong>A sandbox for a risky import</strong></td><td class="before">Copy the whole base first, or risk poisoning production memory.</td></tr>
+          <tr><td class="after"><strong>A checkpoint before a tool call</strong></td><td class="before">Snapshot = another full copy of everything.</td></tr>
+          <tr><td class="after"><strong>1,000 parallel experiments</strong></td><td class="before">1,000 full copies — <em>"496 MB and 67 ms — every time."</em></td></tr>
+        </tbody>
+      </table>
+
+      <p>agenticow makes each of those <em>"<strong>162 bytes and 0.47 ms</strong>, flat."</em> The thing that was a budget-buster becomes near-free.</p>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/full-copy-vs-branch.png" alt="Left: a towering stack of identical bulky filing-cabinet copies being photocopied over and over, tinted coral to feel wasteful. Right: a single violet base with many thin weightless mint overlay sheets — copy-on-write branches."></div>
+          <figcaption class="vcap">Left: full-copy the whole filing cabinet for every version — heavy and wasteful. Right: one base, a thin overlay per version.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 13L6 5l3 5 2-3 3 6z"/></svg> Technical view — the cost of N versions</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 220" role="img" aria-label="As you make more versions, full copies grow linearly into gigabytes while agenticow branches stay nearly flat at kilobytes.">
+              <!-- axes -->
+              <line x1="50" y1="180" x2="540" y2="180" stroke="#1f3a2a"/>
+              <line x1="50" y1="20" x2="50" y2="180" stroke="#1f3a2a"/>
+              <text x="295" y="208" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">number of private versions  →</text>
+              <text x="34" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394" transform="rotate(-90 34 100)">storage  →</text>
+              <!-- full copy line (steep) -->
+              <polyline points="50,176 170,140 290,96 410,52 530,28" fill="none" stroke="#ff6b8a" stroke-width="2.2"/>
+              <circle cx="530" cy="28" r="3.5" fill="#ff6b8a"/>
+              <text x="470" y="40" font-family="JetBrains Mono, monospace" font-size="9" fill="#ff6b8a">full copies → GB</text>
+              <!-- branch line (flat) -->
+              <polyline points="50,176 170,174 290,172 410,171 530,170" fill="none" stroke="#34e8a0" stroke-width="2.2"/>
+              <circle cx="530" cy="170" r="3.5" fill="#34e8a0"/>
+              <text x="430" y="164" font-family="JetBrains Mono, monospace" font-size="9" fill="#34e8a0">branches → KB (flat)</text>
+              <!-- callouts -->
+              <text x="300" y="120" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#8aa394">multi-tenant: 1,000 tenants =</text>
+              <text x="300" y="133" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#5cf2b6">2.4 KB/tenant · 530× less disk</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">Full copies grow with every version — into gigabytes. Branches stay flat in kilobytes. The repo's measured multi-tenant run: 1,000 tenants at <strong>2.4 KB each, 530× less disk than full copies</strong>.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 03 — WHY NOW (Q3) ===== -->
+  <section id="now">
+  <details class="sec">
+    <summary>
+      <span class="s-num">03</span>
+      <span class="s-head">
+        <span class="s-q">Q3 · Why is that a problem now?</span>
+        <h2 class="s-title">Cheap-model fleets win on orchestration, not on smarter execution</h2>
+        <p class="s-sub">The lever is running many cheap isolated attempts and throwing failures away — which only works if failure is free.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in">The repo's thesis: <em>"smarter <strong>orchestration</strong>, not smarter <strong>execution</strong>."</em> With cheap models, the win comes from running <em>many</em> isolated attempts and discarding the bad ones — so <em>"'throw it away and try a fresh independent attempt' beats 'make it reflect on its mistake.'"</em></p>
+      <ul>
+        <li><strong>Reasoning scaffolds can backfire on cheap models.</strong> The README cites a scaffolding ablation (FRAMES benchmark, cheap models <code class="inl">deepseek-v4-pro</code> + <code class="inl">glm-5.2</code>) where clever reasoning prompts make cheap models do <em>worse</em>, not better.</li>
+        <li><strong>So you parallelize instead.</strong> Run a thousand cheap, isolated attempts off one shared memory, keep the winners, drop the rest. That only works if spinning up (and throwing away) an isolated memory is nearly free.</li>
+        <li><strong>That's exactly what cheap branching unlocks.</strong> agenticow is <em>"infrastructure that turns 'run 1,000 cheap agents safely' into a tractable, near-free operation"</em> — it <em>"makes failure <em>free</em>."</em></li>
+      </ul>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/rollback-time.png" alt="A glowing timeline with mint checkpoint flags and a bright rewind arrow snapping back to a clean checkpoint, while a small cluster of coral poison specks is discarded and fades away."></div>
+          <figcaption class="vcap">When a branch goes wrong you don't repair it — you discard it and try a fresh one. Cheap branching makes that throwaway loop free.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 8h10M8 3v10"/></svg> Technical view — reflect-and-retry vs. fan-out-and-discard</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 210" role="img" aria-label="Top: one agent reflecting on its mistakes in a slow loop. Bottom: many cheap branches run in parallel, failures discarded for free, one promoted.">
+              <!-- top: reflect loop -->
+              <text x="12" y="24" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#ff6b8a">REFLECT &amp; RETRY (one expensive loop)</text>
+              <circle cx="60" cy="56" r="14" fill="#122619" stroke="#ff6b8a"/>
+              <path d="M74 56 a 14 14 0 1 1 -4 -10" fill="none" stroke="#ff6b8a" stroke-width="1.4" marker-end="url(#ar)"/>
+              <text x="100" y="52" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">"think about</text>
+              <text x="100" y="64" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">your mistake"</text>
+              <text x="220" y="59" font-family="JetBrains Mono, monospace" font-size="9" fill="#ff6b8a">slow · can backfire on cheap models</text>
+              <line x1="12" y1="92" x2="548" y2="92" stroke="#1f3a2a" stroke-dasharray="3 4"/>
+              <!-- bottom: fan-out -->
+              <text x="12" y="116" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#34e8a0">FAN OUT &amp; DISCARD (many cheap branches)</text>
+              <circle cx="40" cy="160" r="10" fill="#9b8cff"/>
+              <text x="40" y="186" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3a6ff">base</text>
+              <g stroke="#34e8a0" stroke-width="1.3" fill="none">
+                <path d="M50 160 C 90 160 90 134 130 134"/><path d="M50 160 C 90 160 90 150 130 150"/>
+                <path d="M50 160 C 90 160 90 166 130 166"/><path d="M50 160 C 90 160 90 182 130 182"/>
+              </g>
+              <circle cx="134" cy="134" r="7" fill="#34e8a0"/>
+              <circle cx="134" cy="150" r="7" fill="#5d7567"/>
+              <circle cx="134" cy="166" r="7" fill="#5d7567"/>
+              <circle cx="134" cy="182" r="7" fill="#34e8a0"/>
+              <text x="156" y="138" font-family="JetBrains Mono, monospace" font-size="8" fill="#34e8a0">keep ✓</text>
+              <text x="156" y="170" font-family="JetBrains Mono, monospace" font-size="8" fill="#5d7567">discard (free)</text>
+              <line x1="141" y1="134" x2="380" y2="134" stroke="#34e8a0" stroke-width="1.2" marker-end="url(#ar)"/>
+              <rect x="382" y="120" width="150" height="30" rx="8" fill="#0a160f" stroke="#34e8a0"/>
+              <text x="457" y="139" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#eaf3ee">promote the winner</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">The shift: not "make one agent reflect harder," but "run many cheap isolated attempts and keep the winners." agenticow is the plumbing that makes the throwaway branches free.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 04 — HOW IT WORKS (Q4) ===== -->
+  <section id="how">
+  <details class="sec">
+    <summary>
+      <span class="s-num">04</span>
+      <span class="s-head">
+        <span class="s-q">Q4 · How does it solve it?</span>
+        <h2 class="s-title">Copy-on-write branches + a read-through query that merges the lineage</h2>
+        <p class="s-sub">A branch stores only its edits; a query walks the chain child → … → base and merges the results.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in"><strong>Copy-on-write, in plain terms:</strong> a branch <em>"records only its own edits plus a pointer to its parent."</em> Nothing is copied up front — the base is shared and read straight through. You only ever store what a branch actually changes.</p>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/overlay-sheets.png" alt="A base page with transparent overlay sheets; one overlay carries a small coral X (a tombstone hiding something on the base) while the base shows through untouched beneath."></div>
+          <figcaption class="vcap">Reads pass through the overlays down to the base; the topmost overlay wins, and a coral "tombstone" can hide something on the base without deleting it.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/></svg> Technical view — the read-through merge</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 240" role="img" aria-label="A query walks child to parent to base, merges results, lets the child win on id collisions, masks tombstoned ids, and re-ranks by exact distance.">
+              <!-- chain -->
+              <rect x="20" y="40" width="110" height="44" rx="8" fill="#0e1d16" stroke="#34e8a0"/>
+              <text x="75" y="60" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#34e8a0">child branch</text>
+              <text x="75" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#8aa394">edits + tombstones</text>
+              <rect x="20" y="104" width="110" height="44" rx="8" fill="#0e1d16" stroke="#2fd6c6"/>
+              <text x="75" y="124" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#2fd6c6">…parent…</text>
+              <text x="75" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#8aa394">its edits</text>
+              <rect x="20" y="168" width="110" height="44" rx="8" fill="#0e1d16" stroke="#9b8cff"/>
+              <text x="75" y="188" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#b3a6ff">base</text>
+              <text x="75" y="202" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#8aa394">shared, read-through</text>
+              <line x1="75" y1="84" x2="75" y2="104" stroke="#8aa394" marker-end="url(#ar)"/>
+              <line x1="75" y1="148" x2="75" y2="168" stroke="#8aa394" marker-end="url(#ar)"/>
+              <!-- merge steps -->
+              <line x1="130" y1="62" x2="250" y2="100" stroke="#8aa394" stroke-width="1.1" marker-end="url(#ar)"/>
+              <line x1="130" y1="126" x2="250" y2="116" stroke="#8aa394" stroke-width="1.1" marker-end="url(#ar)"/>
+              <line x1="130" y1="190" x2="250" y2="132" stroke="#8aa394" stroke-width="1.1" marker-end="url(#ar)"/>
+              <rect x="252" y="86" width="180" height="62" rx="10" fill="#122619" stroke="#1f3a2a"/>
+              <text x="342" y="106" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#eaf3ee">merge &amp; resolve</text>
+              <text x="262" y="124" font-family="JetBrains Mono, monospace" font-size="8" fill="#34e8a0">• child wins on id collision</text>
+              <text x="262" y="136" font-family="JetBrains Mono, monospace" font-size="8" fill="#ff6b8a">• mask tombstoned ids</text>
+              <line x1="432" y1="117" x2="466" y2="117" stroke="#8aa394" marker-end="url(#ar)"/>
+              <rect x="468" y="92" width="80" height="50" rx="10" fill="#0a160f" stroke="#34e8a0"/>
+              <text x="508" y="112" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="10" fill="#34e8a0">top-K</text>
+              <text x="508" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#8aa394">re-ranked by</text>
+              <text x="508" y="136" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#8aa394">exact distance</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">A query <em>"walks the lineage chain (child → … → base), merges each store's results, lets the <strong>child win</strong> on any id collision, masks anything the branch <strong>tombstoned</strong>, and re-ranks by exact distance."</em></figcaption>
+        </figure>
+      </div>
+
+      <h4>The Git-shaped operations you get</h4>
+      <ul>
+        <li><strong><code class="inl">branch()</code> / <code class="inl">fork()</code></strong> — make an isolated child (162 B, ~0.5 ms).</li>
+        <li><strong><code class="inl">delete()</code></strong> — a copy-on-write <em>tombstone</em> that hides ancestor ids without touching the base.</li>
+        <li><strong><code class="inl">checkpoint()</code> / <code class="inl">rollback()</code></strong> — freeze a restore point, then discard everything since (rollback p50 <strong>0.571 ms</strong>).</li>
+        <li><strong><code class="inl">diff()</code></strong> — returns <code class="inl">{ added, overridden, deleted }</code>, just like a Git diff.</li>
+        <li><strong><code class="inl">promote(target)</code></strong> — <em>"replay this branch's edits into target"</em> (a Git-style merge).</li>
+        <li><strong><code class="inl">lineage()</code> / <code class="inl">status()</code></strong> — an auditable parent/label/timestamp trail.</li>
+      </ul>
+
+      <div class="note"><span class="lab">Built on ruvector</span>The vector file format (RVF) and the native search live in the upstream <strong>ruvector</strong> Rust engine; agenticow is the JavaScript copy-on-write / lineage layer on top, with one runtime dependency — <code class="inl">@ruvector/rvf-node</code>.</div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 05 — SOLVED STATE (Q5) ===== -->
+  <section id="solved">
+  <details class="sec">
+    <summary>
+      <span class="s-num">05</span>
+      <span class="s-head">
+        <span class="s-q">Q5 · What does a solved state look like?</span>
+        <h2 class="s-title">From 496 MB / 67 ms per copy to 162 B / 0.47 ms per branch</h2>
+        <p class="s-sub">The before → after, stated as concrete, reproducible numbers from the repo.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in">"Solved" isn't abstract here — it's a set of measured numbers you can reproduce with <code class="inl">npx agenticow bench</code>.</p>
+
+      <div class="ba">
+        <div class="card b">
+          <h5>Before · normal vector DB</h5>
+          <p>To snapshot / fork / checkpoint, <strong>full-copy the index</strong>: at 1M vectors that's <strong>496 MB and 67 ms</strong>, every time. 1,000 versions = gigabytes of near-identical copies — so in practice you don't give everyone their own memory.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="card a">
+          <h5>After · agenticow</h5>
+          <p>Branch it copy-on-write: <strong>162 bytes and 0.47 ms</strong>, flat, any base size. Rollback p50 <strong>0.571 ms</strong>. 1,000 tenants at <strong>2.4 KB each</strong>, <strong>530× less disk</strong>, <strong>0/200 leaks</strong>.</p>
+        </div>
+      </div>
+
+      <table class="tbl">
+        <thead><tr><th>Operation at 1M-vector scale</th><th>Normal vector DB</th><th>agenticow</th><th>Win</th></tr></thead>
+        <tbody>
+          <tr><td class="before">Make a private version (fork/snapshot)</td><td class="num">496 MB</td><td class="num">162 B</td><td class="num win">~3000× smaller</td></tr>
+          <tr><td class="before">Time to create it</td><td class="num">67 ms</td><td class="num">0.47 ms</td><td class="num win">~83× faster</td></tr>
+          <tr><td class="before">Roll back to a checkpoint</td><td class="num">re-copy</td><td class="num">0.571 ms</td><td class="num win">p50</td></tr>
+          <tr><td class="before">1,000 per-tenant memories on disk</td><td class="num">full copies</td><td class="num">2.4 KB ea.</td><td class="num win">530× less</td></tr>
+        </tbody>
+      </table>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/full-copy-vs-branch.png" alt="The before/after again: a heavy stack of full filing-cabinet copies versus one base with weightless overlay branches."></div>
+          <figcaption class="vcap">Same capability — a private, isolated version of the memory — at a tiny fraction of the cost and time.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 14V2M2 14h12M5 11l3-4 2 2 4-6"/></svg> Technical view — the headline gaps</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 220" role="img" aria-label="Bar comparison: full copy 496 MB and 67 ms versus agenticow branch 162 bytes and 0.47 ms.">
+              <!-- size bars -->
+              <text x="20" y="28" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">SNAPSHOT SIZE (1M vectors)</text>
+              <rect x="20" y="40" width="380" height="22" rx="4" fill="#122619" stroke="#ff6b8a"/>
+              <rect x="20" y="40" width="380" height="22" rx="4" fill="#ff6b8a" opacity=".7"/>
+              <text x="408" y="56" font-family="JetBrains Mono, monospace" font-size="10" fill="#ff6b8a">496 MB · full copy</text>
+              <rect x="20" y="70" width="380" height="22" rx="4" fill="#122619" stroke="#34e8a0"/>
+              <rect x="20" y="70" width="2.4" height="22" rx="2" fill="#34e8a0"/>
+              <text x="30" y="86" font-family="JetBrains Mono, monospace" font-size="10" fill="#34e8a0">162 B · branch  (~3000× smaller)</text>
+              <!-- time bars -->
+              <text x="20" y="124" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">TIME TO CREATE</text>
+              <rect x="20" y="136" width="380" height="22" rx="4" fill="#122619" stroke="#ff6b8a"/>
+              <rect x="20" y="136" width="380" height="22" rx="4" fill="#ff6b8a" opacity=".7"/>
+              <text x="408" y="152" font-family="JetBrains Mono, monospace" font-size="10" fill="#ff6b8a">67 ms · full copy</text>
+              <rect x="20" y="166" width="380" height="22" rx="4" fill="#122619" stroke="#34e8a0"/>
+              <rect x="20" y="166" width="2.7" height="22" rx="2" fill="#34e8a0"/>
+              <text x="30" y="182" font-family="JetBrains Mono, monospace" font-size="10" fill="#34e8a0">0.47 ms · branch  (~83× faster)</text>
+              <text x="20" y="208" font-family="JetBrains Mono, monospace" font-size="8" fill="#5d7567">source: README "Why" + acceptance run (reproduce with npx agenticow bench)</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">The two headline gaps, drawn to scale: a branch is a sliver next to a full copy — ~3000× smaller and ~83× faster to create.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note honest"><span class="lab">Read these numbers honestly</span>This is a win on <strong>branching cost</strong>, not raw search speed. agenticow <em>"concedes raw single-index ANN throughput"</em> and runs <em>"~6.3× behind hnswlib at 1M-vector scale"</em> — a deliberate trade (see §11). The leverage is cheap isolation, instant rollback, and auditable lineage.</div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 06 — GROUNDING EXAMPLE ===== -->
+  <section id="sofia">
+  <details class="sec" open>
+    <summary>
+      <span class="s-num">06</span>
+      <span class="s-head">
+        <span class="s-q">The "oh — that's what it's for" moment</span>
+        <h2 class="s-title">Sofia runs a small SaaS writing-assistant</h2>
+        <p class="s-sub">One named, ordinary person. A real before → after. No database degree required.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in"><strong>Sofia runs a small SaaS writing-assistant.</strong> Every customer's assistant should remember <em>their</em> documents, <em>their</em> style, <em>their</em> corrections — privately. She's not a database engineer; she just needs each customer to have their own memory without it costing a fortune or leaking across accounts.</p>
+
+      <figure class="vfig" style="margin:20px 0;">
+        <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view — Sofia's one base, a branch per customer</figcaption>
+        <div class="vbody"><img src="/assets/img/sofia-tenants.png" alt="One shared violet base memory at the center, with thin mint branches fanning out to a ring of separate customer workspaces, each isolated from the others by an invisible boundary."></div>
+        <figcaption class="vcap">One shared base, a private branch per customer. Each customer sees their own memory layered over the shared base — and nothing leaks across.</figcaption>
+      </figure>
+
+      <div class="ba">
+        <div class="card b">
+          <h5>Before</h5>
+          <p>To give each customer a private memory, Sofia's only option is to <strong>copy the shared base index</strong> for every one of them — hundreds of MB and tens of ms <em>per customer</em>, every time. A thousand customers is hundreds of GB of near-identical copies. So in practice she can't afford per-customer memory, and bolts everyone into one shared store — where one customer's data can surface in another's results.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="card a">
+          <h5>After agenticow</h5>
+          <p>Sofia keeps <strong>one base</strong> and gives each customer a <strong>branch</strong> — 162 bytes, ~0.5 ms, any base size. A query merges the customer's branch over the shared base, child-wins, tombstones masked — so each customer sees their own memory and <strong>nothing else</strong> (<em>"0/200 leaks, 2.4 KB/tenant, 530× less disk"</em>). If a nightly import goes wrong, she <code class="inl">rollback()</code>s <strong>that one customer</strong> in ~0.5 ms without touching anyone else.</p>
+        </div>
+      </div>
+
+      <p class="lead-in" style="margin-top:24px;">The "oh, that's what it's for" line: <em>It's the difference between photocopying the entire filing cabinet for every customer, and giving each one a transparent overlay sheet that only records what they changed.</em></p>
+
+      <div class="note honest"><span class="lab">The honest hedge the repo demands</span>The per-tenant isolation is real and measured, but Sofia's win is <strong>cheap isolation, instant rollback, and auditable lineage</strong> — not "the fastest possible search." If she needed maximum raw search speed on one static index, the repo itself says to use a dedicated ANN library.</div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 07 — USE-CASE GALLERY (Q6) ===== -->
+  <section id="gallery">
+  <details class="sec" open>
+    <summary>
+      <span class="s-num">07</span>
+      <span class="s-head">
+        <span class="s-q">Q6 · Where else does this apply?</span>
+        <h2 class="s-title">A gallery of real, runnable uses</h2>
+        <p class="s-sub">Eight scenarios — each its own card. Every command maps to a real script in the repo's <code class="inl">examples/</code>.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="gallery-intro lead-in">Open any card to see the situation, the exact command, what it does, and a diagram of what happens. (All eight map to scripts in <code class="inl">examples/</code>, per <code class="inl">examples/README.md</code>.)</p>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view — every demo is the same move</figcaption>
+          <div class="vbody"><img src="/assets/img/branch-graph-detail.png" alt="A detailed Git-style branch graph: a violet trunk of base commits with mint feature branches splitting off, a few merging back through a glowing gate, and one or two ending in faint coral dead-ends."></div>
+          <figcaption class="vcap">Every card below is a different angle on one move: branch off a shared base, do something isolated, then keep it, roll it back, or merge it in.</figcaption>
+        </figure>
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/></svg> Technical view — how the 8 demos relate</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 180" role="img" aria-label="The eight demos grouped: fan out, isolate, time-travel, merge, and verify.">
+              <g font-family="JetBrains Mono, monospace" font-size="8.5">
+                <rect x="12" y="20" width="168" height="46" rx="9" fill="#0e1d16" stroke="#34e8a0"/>
+                <text x="96" y="38" text-anchor="middle" fill="#34e8a0">FAN OUT</text>
+                <text x="96" y="52" text-anchor="middle" fill="#8aa394">1 parallel · 2 multi-tenant</text>
+                <rect x="192" y="20" width="168" height="46" rx="9" fill="#0e1d16" stroke="#ff6b8a"/>
+                <text x="276" y="38" text-anchor="middle" fill="#ff6b8a">ISOLATE &amp; REWIND</text>
+                <text x="276" y="52" text-anchor="middle" fill="#8aa394">3 red-team · 4 time-travel</text>
+                <rect x="372" y="20" width="176" height="46" rx="9" fill="#0e1d16" stroke="#9b8cff"/>
+                <text x="460" y="38" text-anchor="middle" fill="#b3a6ff">MERGE</text>
+                <text x="460" y="52" text-anchor="middle" fill="#8aa394">5 A/B+promote · 6 compliance</text>
+                <rect x="192" y="92" width="168" height="40" rx="9" fill="#0a160f" stroke="#2fd6c6"/>
+                <text x="276" y="110" text-anchor="middle" fill="#2fd6c6">VERIFY</text>
+                <text x="276" y="124" text-anchor="middle" fill="#8aa394">7 bench · 8 acceptance (8/8)</text>
+              </g>
+              <text x="280" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#5d7567">all built on one primitive: a cheap copy-on-write branch</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">The eight demos in four groups: fan out, isolate &amp; rewind, merge, and verify — every one built on the same cheap copy-on-write branch.</figcaption>
+        </figure>
+      </div>
+
+      <!-- UC 1 -->
+      <details class="uc">
+        <summary><span class="uc-n b1">1</span><span class="uc-t">Run a thousand cheap agents in parallel — safely</span><span class="uc-tag">parallel-agents.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>You want to fan a task out to many cheap-model attempts and keep only the winners.</p>
+              <p><span class="k">What it does</span><em>"Fork N branches from a base, ingest + tombstone per branch, query each, roll one back."</em> Each agent gets an isolated memory off one shared base.</p>
+              <p><span class="k">What you get</span>N independent agent-memories for ~162 bytes each, so "try 1,000 attempts and throw the bad ones away" is near-free.</p>
+              <div class="cmd" data-copy="node examples/parallel-agents.mjs"><span class="prompt">$ </span>node examples/parallel-agents.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — one base, many forks, a few discarded</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="One base node fans out into many branches, some greyed out (discarded), one promoted.">
+                <circle cx="32" cy="75" r="11" fill="#9b8cff"/><text x="32" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3a6ff">base</text>
+                <g stroke="#34e8a0" stroke-width="1.3" fill="none"><path d="M43 75 C 90 75 90 34 150 34"/><path d="M43 75 C 90 75 90 58 150 58"/><path d="M43 75 C 90 75 90 92 150 92"/><path d="M43 75 C 90 75 90 116 150 116"/></g>
+                <circle cx="154" cy="34" r="7" fill="#34e8a0"/><circle cx="154" cy="58" r="7" fill="#5d7567"/><circle cx="154" cy="92" r="7" fill="#5d7567"/><circle cx="154" cy="116" r="7" fill="#34e8a0"/>
+                <line x1="161" y1="34" x2="250" y2="34" stroke="#34e8a0" marker-end="url(#ar)"/>
+                <rect x="252" y="22" width="44" height="24" rx="6" fill="#0a160f" stroke="#34e8a0"/><text x="274" y="38" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#34e8a0">keep</text>
+                <text x="200" y="80" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#5d7567">discard (free)</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 2 -->
+      <details class="uc">
+        <summary><span class="uc-n b2">2</span><span class="uc-t">Per-customer / multi-tenant memory (one base, a branch per tenant)</span><span class="uc-tag">multi-tenant-saas.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>A SaaS product where every customer needs private memory that can't leak.</p>
+              <p><span class="k">What it does</span>Spins up <em>"1,000 isolated tenant branches"</em> over a shared base and probes for cross-tenant leaks.</p>
+              <p><span class="k">What you get</span>Measured <strong>0/200 leaks, 2.4 KB/tenant, 530× less disk than full copies</strong>.</p>
+              <div class="cmd" data-copy="node examples/multi-tenant-saas.mjs"><span class="prompt">$ </span>node examples/multi-tenant-saas.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — a shared base, isolated tenant overlays</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A shared base with many tenant branches; a leak probe bounces off the isolation boundary.">
+                <circle cx="150" cy="75" r="13" fill="#9b8cff"/><text x="150" y="79" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#06120c">base</text>
+                <g stroke="#34e8a0" stroke-width="1.1" fill="none" opacity=".85"><path d="M150 62 L150 24"/><path d="M161 68 L210 40"/><path d="M163 75 L218 75"/><path d="M161 82 L210 110"/><path d="M150 88 L150 126"/><path d="M139 82 L90 110"/><path d="M137 75 L82 75"/><path d="M139 68 L90 40"/></g>
+                <g fill="#34e8a0"><circle cx="150" cy="22" r="4"/><circle cx="214" cy="38" r="4"/><circle cx="222" cy="75" r="4"/><circle cx="214" cy="112" r="4"/><circle cx="150" cy="128" r="4"/><circle cx="86" cy="112" r="4"/><circle cx="78" cy="75" r="4"/><circle cx="86" cy="38" r="4"/></g>
+                <path d="M214 38 q 18 12 0 24" fill="none" stroke="#ff6b8a" stroke-width="1.3" stroke-dasharray="2 2"/><text x="250" y="58" font-family="JetBrains Mono, monospace" font-size="7" fill="#ff6b8a">leak ✗</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 3 -->
+      <details class="uc">
+        <summary><span class="uc-n b3">3</span><span class="uc-t">Sandbox an untrusted document (red-team / prompt-injection safety)</span><span class="uc-tag">red-team-sandbox.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>You must ingest a document you don't trust without letting it poison the real memory.</p>
+              <p><span class="k">What it does</span>The untrusted doc lands in an <strong>isolated fork</strong>; a deterministic injection-distance probe gates it; if it's an exploit you <code class="inl">rollback()</code>.</p>
+              <p><span class="k">What you get</span><em>"1.1 ms, 0 vectors reached base"</em> — the attack is contained and erased without ever touching production memory.</p>
+              <div class="cmd" data-copy="node examples/red-team-sandbox.mjs"><span class="prompt">$ </span>node examples/red-team-sandbox.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — poison quarantined, base untouched</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A poison document enters a quarantined fork, is rolled back, and zero vectors reach the base.">
+                <rect x="14" y="60" width="36" height="30" rx="4" fill="#122619" stroke="#ff6b8a"/><g fill="#ff6b8a"><circle cx="24" cy="70" r="2.5"/><circle cx="34" cy="78" r="2.5"/><circle cx="42" cy="68" r="2.5"/></g><text x="32" y="104" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#ff6b8a">untrusted</text>
+                <line x1="50" y1="75" x2="74" y2="75" stroke="#8aa394" marker-end="url(#ar)"/>
+                <rect x="78" y="48" width="74" height="54" rx="8" fill="#0a160f" stroke="#ff6b8a" stroke-dasharray="3 3"/><text x="115" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#ff6b8a">fork</text><text x="115" y="86" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#8aa394">quarantine</text>
+                <path d="M115 102 q 0 22 -40 22" fill="none" stroke="#34e8a0" stroke-width="1.3" marker-end="url(#ar)"/><text x="120" y="120" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">rollback 1.1 ms</text>
+                <rect x="196" y="56" width="86" height="38" rx="8" fill="#0e1d16" stroke="#9b8cff"/><text x="239" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3a6ff">base</text><text x="239" y="86" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">0 reached ✓</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 4 -->
+      <details class="uc">
+        <summary><span class="uc-n b4">4</span><span class="uc-t">Time-travel debugging &amp; crash-recovery checkpoints</span><span class="uc-tag">time-travel-debug.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>A latent bug corrupted the agent's memory and you need to rewind past it.</p>
+              <p><span class="k">What it does</span><code class="inl">checkpoint()</code> freezes restore points; <code class="inl">rollback(checkpointId)</code> discards everything since — no replaying the agent's steps.</p>
+              <p><span class="k">What you get</span>The corrupted state rewound to a known-good point in well under a millisecond (rollback p50 0.571 ms).</p>
+              <div class="cmd" data-copy="node examples/time-travel-debug.mjs"><span class="prompt">$ </span>node examples/time-travel-debug.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — rewind to a clean checkpoint</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A timeline of checkpoints with a rewind arrow snapping back to a clean one.">
+                <line x1="20" y1="80" x2="280" y2="80" stroke="#1f3a2a" stroke-width="2"/>
+                <g fill="#34e8a0"><rect x="50" y="72" width="4" height="16"/><rect x="110" y="72" width="4" height="16"/><rect x="170" y="72" width="4" height="16"/></g>
+                <circle cx="230" cy="80" r="5" fill="#ff6b8a"/><text x="230" y="104" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#ff6b8a">bug</text>
+                <text x="112" y="64" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">clean ✓</text>
+                <path d="M230 64 C 190 34 150 34 114 62" fill="none" stroke="#5cf2b6" stroke-width="1.6" marker-end="url(#ar)"/><text x="172" y="34" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#5cf2b6">rollback</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 5 -->
+      <details class="uc">
+        <summary><span class="uc-n b5">5</span><span class="uc-t">A/B test at scale, then promote the winner</span><span class="uc-tag">ab-at-scale.mjs · promotion-pipeline.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>You want to try many memory variants and merge the best one into production.</p>
+              <p><span class="k">What it does</span>Branches 128 variants off one base; the pipeline runs <em>agent → sandbox → review → prod</em>, using <code class="inl">diff()</code> and <code class="inl">promote(target)</code> to <em>"replay this branch's edits into target."</em></p>
+              <p><span class="k">What you get</span>A scaled experiment plus a gated path to ship the winner — a Git-style merge.</p>
+              <div class="cmd" data-copy="node examples/ab-at-scale.mjs"><span class="prompt">$ </span>node examples/ab-at-scale.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — 128 variants → gate → one promoted</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="Many variant branches pass through a deterministic gate; one is promoted into the trunk.">
+                <line x1="20" y1="120" x2="280" y2="120" stroke="#9b8cff" stroke-width="3"/><text x="24" y="138" font-family="JetBrains Mono, monospace" font-size="7" fill="#b3a6ff">trunk / prod</text>
+                <g stroke="#34e8a0" stroke-width="1" fill="none" opacity=".7"><path d="M50 120 C 60 90 70 70 80 50"/><path d="M70 120 C 80 92 90 74 100 56"/><path d="M90 120 C 100 94 110 78 120 62"/><path d="M110 120 C 120 96 130 82 140 68"/></g>
+                <text x="60" y="44" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">128 variants</text>
+                <path d="M150 60 l 12 8 l -12 8 l -12 -8 z" fill="#0a160f" stroke="#ffcf5e"/><text x="150" y="50" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#ffcf5e">gate</text>
+                <path d="M162 68 C 200 80 220 100 230 120" fill="none" stroke="#34e8a0" stroke-width="1.8" marker-end="url(#ar)"/><text x="220" y="96" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">promote</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 6 -->
+      <details class="uc">
+        <summary><span class="uc-n b6">6</span><span class="uc-t">Compliance, lineage &amp; GDPR right-to-erasure</span><span class="uc-tag">compliance-lineage.mjs</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>A user invokes "delete my data" and you must prove it's gone.</p>
+              <p><span class="k">What it does</span><code class="inl">lineage()</code> / <code class="inl">status()</code> give an auditable parent/label/timestamp trail; because each user's data lives in their own branch layer, you <strong>drop that layer</strong> to surgically erase them.</p>
+              <p><span class="k">What you get</span>Provable, scoped deletion plus an audit trail — instead of hunting one user's vectors out of a shared index.</p>
+              <div class="cmd" data-copy="node examples/compliance-lineage.mjs"><span class="prompt">$ </span>node examples/compliance-lineage.mjs<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — detach one user's layer, the rest intact</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A lineage tree where one user's layer is detached and shredded while the others remain.">
+                <circle cx="60" cy="110" r="10" fill="#9b8cff"/><text x="60" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#b3a6ff">base</text>
+                <g stroke="#34e8a0" stroke-width="1.2" fill="none"><path d="M70 110 C 110 110 110 60 150 60"/><path d="M70 110 C 110 110 110 90 150 90"/></g>
+                <circle cx="154" cy="60" r="7" fill="#34e8a0"/><text x="176" y="56" font-family="JetBrains Mono, monospace" font-size="7" fill="#34e8a0">user A ✓</text>
+                <path d="M120 110 C 160 110 160 130 200 130" fill="none" stroke="#ff6b8a" stroke-width="1.2" stroke-dasharray="3 3"/>
+                <circle cx="204" cy="130" r="7" fill="#ff6b8a" opacity=".5"/><text x="226" y="134" font-family="JetBrains Mono, monospace" font-size="7" fill="#ff6b8a">user B erased</text>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 7 -->
+      <details class="uc">
+        <summary><span class="uc-n b7">7</span><span class="uc-t">Verify the headline numbers yourself</span><span class="uc-tag">bench</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>You don't believe "162 bytes / 0.47 ms / 83× / 3000×."</p>
+              <p><span class="k">What it does</span>Runs the benchmark and the acceptance suite that produce <code class="inl">bench/acceptance-results.json</code>.</p>
+              <p><span class="k">What you get</span>The branch-cost, rollback-latency, and disk-savings figures reproduced on your own machine — <em>"tests 8/8 passing."</em></p>
+              <div class="cmd" data-copy="npx agenticow bench"><span class="prompt">$ </span>npx agenticow bench<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — the bench readout</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A benchmark readout showing branch 162 bytes and 0.47 ms, rollback p50 0.571 ms, full copy struck through.">
+                <rect x="20" y="24" width="260" height="102" rx="8" fill="#05100a" stroke="#1f3a2a"/>
+                <g font-family="JetBrains Mono, monospace" font-size="9">
+                  <text x="34" y="48" fill="#34e8a0">branch    162 B · 0.47 ms ✓</text>
+                  <text x="34" y="68" fill="#34e8a0">rollback  p50 0.571 ms    ✓</text>
+                  <text x="34" y="88" fill="#5cf2b6">tests     8/8 passing      ✓</text>
+                  <text x="34" y="108" fill="#5d7567" text-decoration="line-through">full copy 496 MB · 67 ms</text>
+                </g>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+      <!-- UC 8 -->
+      <details class="uc">
+        <summary><span class="uc-n b8">8</span><span class="uc-t">See it run end-to-end with no code</span><span class="uc-tag">demo</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="uc-body">
+          <div class="uc-grid">
+            <div class="uc-meta">
+              <p><span class="k">Situation</span>You just want to watch the whole branch → checkpoint → rollback → diff story once.</p>
+              <p><span class="k">What it does</span>Runs the scripted end-to-end walkthrough built into the CLI.</p>
+              <p><span class="k">What you get</span>A guided tour of every core operation against a real store — the fastest way to "get it."</p>
+              <div class="cmd" data-copy="agenticow demo"><span class="prompt">$ </span>agenticow demo<span class="copy-hint">copy</span></div>
+            </div>
+            <figure class="vfig">
+              <figcaption class="vlabel tech">Visual — the scripted walkthrough</figcaption>
+              <div class="svgwrap"><svg viewBox="0 0 300 150" role="img" aria-label="A sequence: init, ingest, branch, checkpoint, rollback, diff.">
+                <g font-family="JetBrains Mono, monospace" font-size="8" fill="#8aa394">
+                  <rect x="14" y="40" width="40" height="22" rx="5" fill="#0e1d16" stroke="#9b8cff"/><text x="34" y="55" text-anchor="middle" fill="#b3a6ff">init</text>
+                  <rect x="62" y="40" width="48" height="22" rx="5" fill="#0e1d16" stroke="#2fd6c6"/><text x="86" y="55" text-anchor="middle" fill="#2fd6c6">ingest</text>
+                  <rect x="118" y="40" width="48" height="22" rx="5" fill="#0e1d16" stroke="#34e8a0"/><text x="142" y="55" text-anchor="middle" fill="#34e8a0">branch</text>
+                  <rect x="174" y="40" width="64" height="22" rx="5" fill="#0e1d16" stroke="#34e8a0"/><text x="206" y="55" text-anchor="middle" fill="#34e8a0">checkpoint</text>
+                  <rect x="62" y="78" width="60" height="22" rx="5" fill="#0e1d16" stroke="#ff6b8a"/><text x="92" y="93" text-anchor="middle" fill="#ff6b8a">rollback</text>
+                  <rect x="130" y="78" width="40" height="22" rx="5" fill="#0e1d16" stroke="#ffcf5e"/><text x="150" y="93" text-anchor="middle" fill="#ffcf5e">diff</text>
+                </g>
+                <path d="M54 51 L62 51 M110 51 L118 51 M166 51 L174 51" stroke="#5d7567"/>
+              </svg></div>
+            </figure>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 08 — WHY THIS VS WHAT I HAVE ===== -->
+  <section id="vs">
+  <details class="sec">
+    <summary>
+      <span class="s-num">08</span>
+      <span class="s-head">
+        <span class="s-q">"I already have a vector DB — why this too?"</span>
+        <h2 class="s-title">Why this vs. the vector database you already use</h2>
+        <p class="s-sub">Answered head-on — including the trade agenticow names against itself.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <table class="tbl">
+        <thead><tr><th>You might already use…</th><th>What agenticow changes</th></tr></thead>
+        <tbody>
+          <tr><td class="before"><strong>Pinecone / Chroma / pgvector / hnswlib</strong></td><td class="after">Those are built to search <em>one</em> index fast. To get a second isolated version you <strong>full-copy</strong> the index. agenticow keeps search "good enough" and makes <strong>branching</strong> the cheap primitive — 162 B / 0.47 ms vs 496 MB / 67 ms. It's often used <strong>on top of</strong> an engine, not instead of one.</td></tr>
+          <tr><td class="before"><strong>"I'll just snapshot it myself"</strong></td><td class="after">A snapshot is still a whole copy. agenticow's branches are copy-on-write <em>and</em> queryable live (read-through merge), diff-able (<code class="inl">{ added, overridden, deleted }</code>), and merge-able (<code class="inl">promote</code>). It's version control, not backups.</td></tr>
+          <tr><td class="before"><strong>Any of the above</strong></td><td class="after"><strong>The one thing nothing else here gives you:</strong> constant-cost, constant-size branching of a vector memory with Git-shaped semantics — branch / checkpoint / rollback / diff / promote / lineage. That's the moat.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/full-copy-vs-branch.png" alt="The before/after split once more: heavy full-copy filing cabinets versus one base with weightless branch overlays."></div>
+          <figcaption class="vcap">It's not "a faster vector DB." It's a different job: cheap branching <em>on top of</em> your store.</figcaption>
+        </figure>
+
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 8h12M8 2v12"/></svg> Technical view — the deliberate trade</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 200" role="img" aria-label="A 2x2 positioning: a dedicated ANN library wins raw search speed; agenticow wins cheap branching. agenticow concedes ~6.3x raw throughput by design.">
+              <line x1="60" y1="170" x2="520" y2="170" stroke="#1f3a2a"/><line x1="60" y1="20" x2="60" y2="170" stroke="#1f3a2a"/>
+              <text x="290" y="192" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394">cheap branching  →  more</text>
+              <text x="40" y="95" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8aa394" transform="rotate(-90 40 95)">raw search speed  →  more</text>
+              <circle cx="150" cy="55" r="9" fill="#ff6b8a"/><text x="150" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#ff6b8a">hnswlib (raw ANN)</text>
+              <circle cx="450" cy="120" r="11" fill="#34e8a0"/><text x="450" y="104" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="10" fill="#34e8a0">agenticow</text><text x="450" y="142" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#8aa394">branching primitive</text>
+              <text x="300" y="80" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#5d7567">~6.3× behind on raw throughput — by design</text>
+            </svg>
+          </div>
+          <figcaption class="vcap">agenticow's wedge: it gives up the raw-search-speed race (<em>"~6.3× behind hnswlib at 1M"</em>, a deliberate trade) to own the corner nothing else here occupies — constant-cost branching.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 09 — WHAT'S INSIDE / DROP-IN ===== -->
+  <section id="dropin">
+  <details class="sec">
+    <summary>
+      <span class="s-num">09</span>
+      <span class="s-head">
+        <span class="s-q">Q · How would you implement it?</span>
+        <h2 class="s-title">What's actually inside — one small npm package</h2>
+        <p class="s-sub">agenticow is a JavaScript library + CLI, not a model or a service. Here's the real layout.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <p class="lead-in">One npm package, ESM, Node ≥ 18, one runtime dependency. This is the layout (reconstructed from <code class="inl">package.json</code> <code class="inl">files</code> + README references) — annotated so you know what each part is <em>for</em>.</p>
+
+      <div class="tree">
+<span class="root">agenticow/</span>  <span class="cmt"># one npm package · ESM · Node ≥ 18 · MIT © ruvnet</span>
+├ <span class="d">src/</span>
+│  ├ <span class="f">index.js</span>           <span class="cmt"># the library: open / branch / fork / query / delete /</span>
+│  │                     <span class="cmt"># checkpoint / rollback / diff / promote / lineage</span>  <span class="heart">← the heart</span>
+│  └ <span class="f">index.d.ts</span>         <span class="cmt"># TypeScript types</span>
+├ <span class="d">bin/</span><span class="f">agenticow.js</span>     <span class="cmt"># the CLI: init · ingest · branch · checkpoint · rollback ·</span>
+│                        <span class="cmt"># diff · promote · query · lineage · demo · bench · acceptance</span>  <span class="group">← front door</span>
+├ <span class="d">examples/</span>            <span class="cmt"># 16 runnable .mjs (parallel-agents, multi-tenant-saas,</span>
+│                        <span class="cmt"># red-team-sandbox, time-travel-debug, ab-at-scale …)</span>  <span class="group">← the proof</span>
+├ <span class="d">bench/</span>               <span class="cmt"># bench.js · acceptance.js · claim-ladder.js · acceptance-results.json</span>
+├ <span class="d">test/</span>                <span class="cmt"># *.test.js  (README badge: tests 8/8 passing)</span>
+└ <span class="cmt"># depends on → </span><span class="f">@ruvector/rvf-node ^0.2.0</span>  <span class="cmt"># prebuilt native (Rust/NAPI) RVF engine</span>
+      </div>
+
+      <h4>Use it in your own JavaScript</h4>
+      <p>Open a base, branch it, and the branch is isolated and instantly queryable. Roll back to wipe a bad ingest without touching the clean memory.</p>
+      <div class="cmd" data-copy="npm install agenticow"><span class="prompt">$ </span>npm install agenticow<span class="copy-hint">copy</span></div>
+<pre class="block"><span class="k">import</span> { open } <span class="k">from</span> <span class="s">'agenticow'</span>;
+
+<span class="k">const</span> base  = open(<span class="s">'memory.rvf'</span>, { dimension: <span class="s">1536</span> });
+base.ingest([{ id: <span class="s">1</span>, vector: embedding }, <span class="c">/* ... */</span>]);
+
+<span class="k">const</span> agent = base.branch(<span class="s">'agent-a'</span>);        <span class="c">// ~0.5 ms / 162 B, any base size</span>
+agent.ingest([{ id: <span class="s">9001</span>, vector: newMemory }]);
+
+<span class="k">const</span> hits  = agent.query(queryVector, <span class="s">10</span>);  <span class="c">// -> [{ id, distance, branch }, ...]</span>
+
+<span class="k">const</span> ckpt  = agent.checkpoint(<span class="s">'clean'</span>);
+agent.ingest([{ id: <span class="s">666</span>, vector: poison }]);
+agent.rollback(ckpt.id);                      <span class="c">// poison gone, clean memory intact</span></pre>
+
+      <figure class="vfig" style="margin:22px 0;">
+        <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12"/></svg> Technical view — where agenticow sits in your stack</figcaption>
+        <div class="svgwrap">
+          <svg viewBox="0 0 560 170" role="img" aria-label="Your agent code calls agenticow, the JS copy-on-write layer, which sits on the ruvector RVF native engine.">
+            <rect x="180" y="16" width="200" height="38" rx="9" fill="#0e1d16" stroke="#2fd6c6"/><text x="280" y="34" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" fill="#2fd6c6">your agent / app code</text><text x="280" y="47" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#8aa394">import { open } from 'agenticow'</text>
+            <line x1="280" y1="54" x2="280" y2="72" stroke="#8aa394" marker-end="url(#ar)"/>
+            <rect x="150" y="74" width="260" height="42" rx="9" fill="#0a160f" stroke="#34e8a0"/><text x="280" y="92" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-weight="600" font-size="12" fill="#34e8a0">agenticow</text><text x="280" y="107" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7.5" fill="#8aa394">copy-on-write + lineage layer (JavaScript)</text>
+            <line x1="280" y1="116" x2="280" y2="132" stroke="#8aa394" marker-end="url(#ar)"/>
+            <rect x="180" y="134" width="200" height="32" rx="9" fill="#0e1d16" stroke="#9b8cff"/><text x="280" y="154" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3a6ff">@ruvector/rvf-node — native RVF engine</text>
+          </svg>
+        </div>
+        <figcaption class="vcap">agenticow is a thin JavaScript copy-on-write/lineage layer; the vector format (RVF) and native search live below it in the ruvector engine.</figcaption>
+      </figure>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 10 — HOW TO START (Q7) ===== -->
+  <section id="start">
+  <details class="sec">
+    <summary>
+      <span class="s-num">10</span>
+      <span class="s-head">
+        <span class="s-q">Q7 · How do you start?</span>
+        <h2 class="s-title">Two ways to start — both real, both in the README</h2>
+        <p class="s-sub">One <code class="inl">npm install</code>, then either the CLI (no code) or the API.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <ol class="steps">
+        <li><strong>Install it.</strong> Requirements: Node ≥ 18, ESM.
+          <div class="cmd" data-copy="npm install agenticow"><span class="prompt">$ </span>npm install agenticow<span class="copy-hint">copy</span></div>
+        </li>
+        <li><strong>CLI, no code.</strong> Init a store, ingest, branch per user, query the read-through, see the diff:
+          <div class="cmd" data-copy="agenticow init mem.rvf --dim 128
+agenticow ingest mem.rvf --n 5000
+agenticow branch mem.rvf --as user-42
+agenticow query mem.rvf.user-42.rvf --k 10
+agenticow diff mem.rvf.user-42.rvf"><span class="prompt">$ </span>agenticow init   mem.rvf <span class="flag">--dim</span> 128
+<span class="prompt">$ </span>agenticow ingest mem.rvf <span class="flag">--n</span> 5000
+<span class="prompt">$ </span>agenticow branch mem.rvf <span class="flag">--as</span> user-42
+<span class="prompt">$ </span>agenticow query  mem.rvf.user-42.rvf <span class="flag">--k</span> 10
+<span class="prompt">$ </span>agenticow diff   mem.rvf.user-42.rvf<span class="copy-hint">copy</span></div>
+        </li>
+        <li><strong>Or use the API</strong> (<code class="inl">import { open } from 'agenticow'</code>) — see §09 for the worked snippet. To just watch it run, <code class="inl">agenticow demo</code>.</li>
+      </ol>
+      <div class="dual">
+        <figure class="vfig">
+          <figcaption class="vlabel simple"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="7"/><path d="M5 8.5l2 2 4-4.5"/></svg> Friendly view</figcaption>
+          <div class="vbody"><img src="/assets/img/rollback-time.png" alt="A timeline with checkpoint flags and a rewind arrow — the checkpoint/rollback you get for free the moment you branch."></div>
+          <figcaption class="vcap">The moment you branch, you have checkpoints and one-call rollback — the safety net comes for free.</figcaption>
+        </figure>
+        <figure class="vfig">
+          <figcaption class="vlabel tech"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 8h12M8 2v12"/></svg> Technical view — two on-ramps</figcaption>
+          <div class="svgwrap">
+            <svg viewBox="0 0 560 140" role="img" aria-label="Two on-ramps: the CLI with no code, or the JavaScript API.">
+              <g font-family="Space Grotesk, sans-serif" font-size="11">
+                <rect x="40" y="30" width="220" height="78" rx="11" fill="#0e1d16" stroke="#34e8a0"/>
+                <text x="150" y="56" text-anchor="middle" fill="#34e8a0" font-family="JetBrains Mono, monospace" font-size="10">CLI · NO CODE</text>
+                <text x="150" y="76" text-anchor="middle" fill="#eaf3ee">agenticow init / branch</text>
+                <text x="150" y="94" text-anchor="middle" fill="#8aa394" font-size="10">init · ingest · branch · query</text>
+                <rect x="300" y="30" width="220" height="78" rx="11" fill="#0e1d16" stroke="#9b8cff"/>
+                <text x="410" y="56" text-anchor="middle" fill="#b3a6ff" font-family="JetBrains Mono, monospace" font-size="10">JS API</text>
+                <text x="410" y="76" text-anchor="middle" fill="#eaf3ee">import { open }</text>
+                <text x="410" y="94" text-anchor="middle" fill="#8aa394" font-size="10">branch / checkpoint / rollback</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption class="vcap">Pick the CLI to kick the tires with no code, or the API to wire branching into your own agent.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note"><span class="lab">Native fast-path note</span>The native cross-branch ANN merge (<code class="inl">fork(..., { nativeAnn: true })</code>, recall@10 ≈ 1.0) ships for <strong>linux-x64-gnu</strong> today; on macOS / Windows / linux-arm64 it <em>"degrade[s] gracefully to the exact read-through path"</em> — same answers, just not the native speed-up.</div>
+      <p class="center" style="margin-top:24px;"><a class="btn btn-primary" href="https://github.com/ruvnet/agenticow" target="_blank" rel="noopener">Open the repo on GitHub ↗</a></p>
+    </div>
+  </details>
+  </section>
+
+  <!-- ===== 11 — HONEST LIMITS ===== -->
+  <section id="limits">
+  <details class="sec">
+    <summary>
+      <span class="s-num">11</span>
+      <span class="s-head">
+        <span class="s-q">In the repo's own words — don't soften them</span>
+        <h2 class="s-title">Honest limits</h2>
+        <p class="s-sub">agenticow is unusually candid about what it is and isn't. So is this page.</p>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </summary>
+    <div class="s-body">
+      <div class="note warn"><span class="lab">Not a faster search engine</span>It <em>"concedes raw single-index ANN throughput"</em> and runs <em>"~6.3× behind hnswlib at 1M-vector scale"</em> (SIFT-1M, recall@10 ≈ 0.97) — a <strong>deliberate trade</strong>. <em>"If you need maximum raw similarity-search speed on a static index, use a dedicated ANN library."</em></div>
+      <div class="note warn"><span class="lab">Native cross-branch ANN is Linux-only today</span>The fast native path ships for <strong>linux-x64-gnu</strong> only; <em>"darwin / win / linux-arm64 are pending a CI cross-compile and degrade gracefully to the exact read-through path."</em></div>
+      <div class="note warn"><span class="lab">It does not make models smarter</span><em>"The honest claim is leverage, not intelligence."</em> The cognitive <em>quality</em> of a branch is explicitly out of scope — agenticow moves and isolates memory; it doesn't improve reasoning.</div>
+      <div class="note warn"><span class="lab">Selection must be external and deterministic</span>The repo warns <em>against</em> a cheap LM-judge: <em>"a verifier-gated LM-judge picks <strong>worse</strong> than a plain majority vote."</em> The promotion gate must be tests / regex / checkers — <em>"a scoring function, not validated AI cognition."</em></div>
+      <div class="note warn"><span class="lab">"Exotic" applications are vision / PoC</span>Parallel "selves," Darwin-style memory evolution, simulated orgs — research demos, not validated capabilities. The distribution / marketplace / merge-policy layer is <em>"roadmap, not shipped."</em></div>
+      <div class="note warn"><span class="lab">A cosine reopen quirk</span><em>"rvf-node does not persist the cosine metric across a file reopen"</em>; agenticow drives the engine with <em>"L2 over L2-normalized vectors"</em> for cosine. Reopen with <code class="inl">{ metric: 'cosine' }</code> or use <code class="inl">save()</code> / <code class="inl">load()</code>.</div>
+      <div class="note warn"><span class="lab">A version string lags, and it's very new</span>The README body still says <code class="inl">agenticow@0.2.1</code> while <code class="inl">package.json</code> and npm are at <strong>0.2.3</strong> — read the version that matches what you install. The project was created <strong>2026-06-28</strong> and is early-stage infrastructure.</div>
+    </div>
+  </details>
+  </section>
+
+  </main>
+</div>
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="footer">
+  <div class="wrap">
+    <hr class="spec-line" style="margin-bottom:36px;">
+    <div class="cols">
+      <div>
+        <h6>Provenance &amp; attribution</h6>
+        <p class="credit">
+          <b>agenticow</b> is created by <b>Reuven Cohen</b> — <a href="https://github.com/ruvnet" target="_blank" rel="noopener" style="display:inline;">@ruvnet</a>.<br>
+          This is an independent, plain-English <b>explainer</b> of his work — built to give a powerful, dense repo a friendly handle. All numbers and quotes are grounded in the source at the SHA below; nothing here is invented.<br><br>
+          Source: <a href="https://github.com/ruvnet/agenticow" target="_blank" rel="noopener" style="display:inline;">github.com/ruvnet/agenticow ↗</a><br>
+          Live demo: <a href="https://ruvnet.github.io/agenticow/" target="_blank" rel="noopener" style="display:inline;">ruvnet.github.io/agenticow ↗</a><br>
+          npm: <a href="https://www.npmjs.com/package/agenticow" target="_blank" rel="noopener" style="display:inline;">npmjs.com/package/agenticow ↗</a> · License: MIT © ruvnet
+        </p>
+      </div>
+      <div>
+        <h6>On this page</h6>
+        <a href="#what">01 · What is this</a>
+        <a href="#how">04 · How it works</a>
+        <a href="#sofia">06 · Sofia's example</a>
+        <a href="#gallery">07 · Use-case gallery</a>
+        <a href="#dropin">09 · What's inside</a>
+        <a href="#limits">11 · Honest limits</a>
+      </div>
+      <div>
+        <h6>Built on / pairs with</h6>
+        <p class="credit" style="font-size:13px;">
+          ruvector RVF — the vector engine<br>
+          <code style="color:var(--mint);">@ruvector/rvf-node</code> — native binding<br>
+          part of the @ruvnet agent-harness ecosystem<br>
+          <span class="muted">topics: agent-memory · copy-on-write · multi-agent · vector-search</span>
+        </p>
+      </div>
+    </div>
+    <p class="fine">
+      Updated <time datetime="2026-06-29">2026-06-29</time> · source @ <code style="color:var(--mint);">3d93dc3</code>
+      (<code style="color:var(--muted);">3d93dc348b88cdc7e5cb251e89219a05b11dd784</code>) ·
+      Explainer site for agenticow · not affiliated content beyond attribution · all claims grounded in the cited source.
+    </p>
+  </div>
+</footer>
+
+<script src="/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "ruv-explainer-agenticow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Explainer site for agenticow by Reuven Cohen (@ruvnet) — Git for Agent Memory: copy-on-write vector branching.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "python3 -m http.server 4321",
+    "start": "python3 -m http.server 4321"
+  }
+}
