@@ -36,7 +36,7 @@
 //       howItWorks:  { title, lead?, paragraphs? }                 // arch + flow SVGs are MANDATORY
 //       useCases:    { title, intro?, cases:[{title,tag?,paragraphs?|body?,code?,dl?[{term,desc}]}] }
 //       getStarted:  { title, intro?, install?, steps:[ string | {strong,text} ] }
-//       pack:        { title, intro?, tree?, downloadLabel? }      // primer inlined from kb.primerPath
+//       pack:        { title, intro?, tree?, downloadLabel? }      // human primer SHIPS IN the pack zip, never inlined
 //     content.arc?: [{ question, section, altitude }]              // per-section arc question override
 
 import fs from 'node:fs';
@@ -88,32 +88,6 @@ function paras(x) {
   if (!x) return '';
   const arr = Array.isArray(x) ? x : String(x).split(/\n\s*\n/);
   return arr.filter((s) => String(s).trim()).map((s) => `<p>${inline(String(s).trim())}</p>`).join('\n      ');
-}
-
-// tiny, safe markdown → HTML for the inlined primer (headings / lists / fenced code / paragraphs).
-function md2html(md) {
-  const lines = String(md).replace(/\r\n/g, '\n').split('\n');
-  const out = [];
-  let inFence = false, fence = [], list = null, buf = [];
-  const flushBuf = () => { if (buf.length) { out.push(`<p>${inline(buf.join(' ').trim())}</p>`); buf = []; } };
-  const flushList = () => { if (list) { out.push(`<ul>${list.map((li) => `<li>${inline(li)}</li>`).join('')}</ul>`); list = null; } };
-  for (const ln of lines) {
-    if (/^```/.test(ln)) {
-      if (inFence) { out.push(`<pre class="code-block"><code>${esc(fence.join('\n'))}</code></pre>`); fence = []; inFence = false; }
-      else { flushBuf(); flushList(); inFence = true; }
-      continue;
-    }
-    if (inFence) { fence.push(ln); continue; }
-    const h = ln.match(/^(#{1,4})\s+(.*)$/);
-    if (h) { flushBuf(); flushList(); const lvl = Math.min(h[1].length + 1, 4); out.push(`<h${lvl}>${inline(h[2].trim())}</h${lvl}>`); continue; }
-    const li = ln.match(/^\s*[-*]\s+(.*)$/);
-    if (li) { flushBuf(); (list ||= []).push(li[1].trim()); continue; }
-    if (!ln.trim()) { flushBuf(); flushList(); continue; }
-    flushList(); buf.push(ln.trim());
-  }
-  if (inFence) out.push(`<pre class="code-block"><code>${esc(fence.join('\n'))}</code></pre>`);
-  flushBuf(); flushList();
-  return out.join('\n      ');
 }
 
 // resolve an asset path from build.json (absolute, or relative to the build dir) → copy into site/assets.
@@ -255,9 +229,11 @@ function main() {
 
   const visuals = reqObj(ctx.visuals, 'visuals');
   const brand = reqObj(ctx.brand, 'brand');
-  const primerPath = must(path.isAbsolute(ctx.kb?.primerPath || '')
+  // validate the authored human primer exists — it SHIPS INSIDE the pack zip (it is NOT inlined into
+  // the page body; inlining it produced a multi-screen wall of text — the Generation-1 height defect).
+  must(path.isAbsolute(ctx.kb?.primerPath || '')
     ? ctx.kb.primerPath
-    : path.resolve(REPO_ROOT, ctx.kb?.primerPath || `kb/stores/${slug}/${slug}-primer.md`), 'kb.primerPath (authored primer)');
+    : path.resolve(REPO_ROOT, ctx.kb?.primerPath || `kb/stores/${slug}/${slug}-primer.md`), 'kb.primerPath (authored primer, shipped in the pack)');
 
   must(DS_CSS, 'design-system.css');
 
@@ -523,27 +499,30 @@ ${jsonLdScript}
     `<ol class="steps">\n        ${stepsHtml}\n      </ol>`,
   ].filter(Boolean).join('\n      ')));
 
-  // 7 · the AI pack  (file tree + download + dropzone + inlined primer)
+  // 7 · the AI pack  — a TIGHT, visual DOWNLOAD block: a file-tree TEASER of what's inside
+  // (for-ai/ KB + search + MCP · for-humans/ primer) + the download CTA + dropzone. The full
+  // human primer SHIPS INSIDE the zip; it is deliberately NOT inlined here (inlining it made the
+  // page a multi-screen wall of text — the Generation-1 height defect this fix removes).
   const pack = reqObj(S.pack, 'content.sections.pack');
   reqStr(pack.title, 'content.sections.pack.title');
-  const primerHtml = md2html(fs.readFileSync(primerPath, 'utf8'));
-  const tree = pack.tree ? `<div class="tree">${esc(pack.tree)}</div>` : `<div class="tree"><span class="cmt"># ${esc(packZip)}</span>
+  // white-space:pre keeps the file-tree teaser an actual TREE (the .tree class ships
+  // overflow-x:auto for exactly this but omits white-space:pre — set it inline so the
+  // teaser reads as a tree instead of a run-on line; .tree's overflow-x:auto contains it).
+  const tree = pack.tree ? `<div class="tree" style="white-space:pre">${esc(pack.tree)}</div>` : `<div class="tree" style="white-space:pre"><span class="cmt"># ${esc(packZip)}</span>
 <span class="d">for-ai/</span>            <span class="cmt"># wire this into your agent</span>
-  <span class="f">${esc(slug)}-kb.rvf</span>            <span class="cmt"># 384-dim vector brain</span>
+  <span class="f">${esc(slug)}-kb.rvf</span>            <span class="cmt"># 384-dim vector brain (semantic search)</span>
   <span class="f">${esc(slug)}-kb.passages.jsonl</span> <span class="cmt"># full passage text (search returns TEXT)</span>
   <span class="f">${esc(slug)}-symbols.json</span>      <span class="cmt"># exact public API</span>
   <span class="f">${esc(slug)}-dep-graph.json</span>    <span class="cmt"># what depends on what</span>
   <span class="f">${esc(slug)}-entrypoints.json</span>  <span class="cmt"># build / test / run commands</span>
-  <span class="f">ask-kb.mjs</span> · <span class="f">kb-mcp-server.mjs</span>
+  <span class="f">ask-kb.mjs</span> · <span class="f">kb-mcp-server.mjs</span>  <span class="cmt"># CLI + MCP search server</span>
 <span class="d heart">for-humans/</span>        <span class="cmt"># read first</span>
-  <span class="f heart">${esc(slug)}-primer.md</span>      <span class="cmt"># the human orientation (below)</span></div>`;
+  <span class="f heart">${esc(slug)}-primer.md</span>      <span class="cmt"># the human orientation</span></div>`;
   out.push(sectionShell('pack', '07', pack, arcQ.pack, [
     pack.intro ? `<p class="lead-in">${inline(pack.intro)}</p>` : '',
     tree,
     `<div class="dl-cta"><a class="cta" href="${esc(packZip)}" download>${inline(pack.downloadLabel || 'Download the AI knowledge pack')}</a><span class="dl-meta">RVF vector KB + MCP server — drop it into your own agent.</span></div>`,
     `<a class="dropzone" href="${esc(packZip)}" download><span class="dz-icon" aria-hidden="true">&darr;</span><strong>Give your AI the same understanding</strong><span class="dz-hint">${esc(packZip)}</span></a>`,
-    `<h3>The primer — read it here</h3>`,
-    primerHtml,
   ].filter(Boolean).join('\n      ')));
 
   // ── mandated ISOvision attribution + CTA footer (verbatim per design-system §16b) ─────────────
@@ -582,8 +561,16 @@ ${footer}
 `;
 
   // ── guard: zero template tokens / dangling refs (CONTRACT (b)·6, Station-6 cue) ───────────────
+  // Mask legit escaped code/pre content before scanning: author code samples and the inlined primer
+  // routinely contain `${...}` template literals and `{ ... }` JSON braces — that is CONTENT, never a
+  // render leak. For this renderer a literal `${` in the output can ONLY come from esc()'d data (every
+  // `${x}` in the renderer's own template strings is evaluated when the HTML is built), so masking the
+  // <pre>/<code> regions removes the false positives while still catching real leaks in prose/markup.
+  const scannable = html
+    .replace(/<pre[\s\S]*?<\/pre>/gi, '')
+    .replace(/<code[\s\S]*?<\/code>/gi, '');
   const leakRe = /\{\{|\}\}|\$\{|\[object Object\]|(?:^|[\s">])(?:undefined|NaN)(?:[\s"<]|$)|lorem ipsum|\bTODO\b|\bPLACEHOLDER\b/i;
-  const leak = html.match(leakRe);
+  const leak = scannable.match(leakRe);
   if (leak) throw new Error(`unresolved token / placeholder leaked into the page: "${leak[0].trim()}"`);
   for (const m of html.matchAll(/(?:src|href)="(assets\/[^"]+)"/g)) {
     const ref = path.join(siteDir, m[1]);

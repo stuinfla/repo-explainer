@@ -12,6 +12,7 @@
 //   • Reads ONLY its declared slice of build.json:
 //       kb.depGraphPath / kb.entrypointsPath / kb.symbolsPath  (the real extraction)
 //       visuals.<key>.{ascii,altText}                          (brain-authored, when present)
+//       concept.palette                                        (optional, read-only — diagram theming)
 //   • Writes ONLY its own slot — visuals.architectureDiagram / .flowDiagram /
 //       .bigIdeaDiagram / .insightDiagram — leaving visuals.hero / visuals.sections (the
 //       generate-image tool's keys) byte-for-byte untouched. Plus the four .svg files under
@@ -65,43 +66,72 @@ const escapeXml = (s) =>
 
 /**
  * Render ASCII faithfully as a crisp, scalable, accessible monospace SVG following the
- * ascii-to-svg skill's minimal palette + mandatory root attributes + entity escaping +
- * dark-mode awareness. Vector text = maximum clarity, never raster slop.
+ * ascii-to-svg skill's minimal palette + mandatory root attributes + entity escaping.
+ * THEME-AWARE: when the brain's concept.palette is supplied (read-only, optional) the card is
+ * coloured to match the page — surface bg, ink text, ridge border, accent title — so the diagram
+ * reads as a cohesive on-brand panel instead of a jarring light box. Absent a palette it falls back
+ * to the neutral light card + a dark-mode media query. Vector text = maximum clarity, never slop.
  */
-function asciiToSvg(ascii, { title, desc }) {
+function asciiToSvg(ascii, { title, desc, theme }) {
   const lines = ascii.replace(/\r\n?/g, '\n').replace(/\t/g, '    ').split('\n');
   while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
   if (lines.length === 0) lines.push('');
 
-  const FONT = 14, LINE_H = 20, CHAR_W = FONT * 0.6, PAD = 24;
+  const FONT = 17, LINE_H = 25, CHAR_W = FONT * 0.6, PAD = 28;
   const maxLen = Math.max(1, ...lines.map((l) => l.length));
   const W = Math.ceil(maxLen * CHAR_W + PAD * 2);
   const H = Math.ceil(lines.length * LINE_H + PAD * 2);
 
+  // Theme-aware index of the first non-empty line (the diagram's own title row) → accent colour.
+  let titleIdx = lines.findIndex((l) => l.trim() !== '');
+  if (titleIdx < 0) titleIdx = 0;
+
   const textEls = lines
     .map((line, i) => {
       const y = PAD + (i + 1) * LINE_H - 5;
-      return `  <text class="ln" x="${PAD}" y="${y}" xml:space="preserve">${escapeXml(line)}</text>`;
+      const cls = i === titleIdx ? 'ln hd' : 'ln';
+      return `  <text class="${cls}" x="${PAD}" y="${y}" xml:space="preserve">${escapeXml(line)}</text>`;
     })
     .join('\n');
+
+  // Explicit on-brand theme (no media query — the colours are deliberate) when a palette is present;
+  // otherwise the neutral light card with a dark-mode fallback.
+  const styleBlock = theme
+    ? `      .bg { fill: ${theme.bg}; stroke: ${theme.border}; stroke-width: 1.5px; }
+      .ln { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: ${FONT}px; font-weight: 500; fill: ${theme.ink}; white-space: pre; }
+      .hd { fill: ${theme.accent}; font-weight: 700; }`
+    : `      .bg { fill: #f8f9fa; stroke: #333333; stroke-width: 1.5px; }
+      .ln { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: ${FONT}px; fill: #1a1a1a; white-space: pre; }
+      .hd { font-weight: 600; }
+      @media (prefers-color-scheme: dark) {
+        .bg { fill: #161b22; stroke: #768390; }
+        .ln { fill: #e6edf3; }
+      }`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">${escapeXml(title)}</title>
   <desc id="diagram-desc">${escapeXml(desc)}</desc>
   <defs>
     <style>
-      .bg { fill: #f8f9fa; stroke: #333333; stroke-width: 1.5px; }
-      .ln { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: ${FONT}px; fill: #1a1a1a; white-space: pre; }
-      @media (prefers-color-scheme: dark) {
-        .bg { fill: #161b22; stroke: #768390; }
-        .ln { fill: #e6edf3; }
-      }
+${styleBlock}
     </style>
   </defs>
-  <rect class="bg" x="1" y="1" width="${W - 2}" height="${H - 2}" rx="8"/>
+  <rect class="bg" x="1" y="1" width="${W - 2}" height="${H - 2}" rx="10"/>
 ${textEls}
 </svg>
 `;
+}
+
+// Derive an on-brand diagram theme from the brain's concept.palette (read-only, optional). Pure map:
+// surface→card bg, ink→text, ridge→border, accent→title. Returns null when no usable palette is set,
+// so the renderer keeps its neutral light default for un-themed builds.
+function themeFromPalette(palette) {
+  if (!palette || typeof palette !== 'object') return null;
+  const g = (k) => (typeof palette[k] === 'string' && palette[k].trim() ? palette[k].trim() : null);
+  const bg = g('surface') || g('bg-2') || g('bg');
+  const ink = g('ink');
+  if (!bg || !ink) return null;
+  return { bg, ink, border: g('ridge') || g('accent') || ink, accent: g('accent') || ink };
 }
 
 /** xmllint is the proof of well-formedness; its absence or a failure is a loud stop. */
@@ -301,6 +331,11 @@ function main() {
     (buildJson.repo && buildJson.repo.name) ||
     dg.metaName || ep.metaName || dg.target || 'this repo';
 
+  // Optional read-only theming input: the brain's concept.palette (Station 2). When present, the
+  // structural SVGs are coloured to match the page; absent it, they keep the neutral light default.
+  const diagramTheme = themeFromPalette(buildJson.concept && buildJson.concept.palette);
+  if (diagramTheme) process.stderr.write(`${TOOL}: theming diagrams from concept.palette (bg ${diagramTheme.bg}, ink ${diagramTheme.ink})\n`);
+
   const assetsDir = path.join(buildDir, 'assets');
   fs.mkdirSync(assetsDir, { recursive: true });
 
@@ -321,7 +356,7 @@ function main() {
       ? existing.altText
       : defaultAltText(spec, dg, ep, name, ascii);
 
-    const svg = asciiToSvg(ascii, { title: `${name} - ${spec.title}`, desc: altText });
+    const svg = asciiToSvg(ascii, { title: `${name} - ${spec.title}`, desc: altText, theme: diagramTheme });
     const svgPath = path.join(assetsDir, spec.file);
     fs.writeFileSync(svgPath, svg, 'utf8');
     assertXmllintClean(svgPath, spec.key);

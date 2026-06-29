@@ -6,15 +6,26 @@
 // paired DDD §8.5 Scorecard + §12 (the QA dual-gate as first-class domain).
 //
 // JOB (one mechanical job): render the ALREADY-ASSEMBLED site LOCALLY in a real
-// browser (Playwright), take FULL-PAGE screenshots at 390px (mobile) + 1440px
-// (desktop), then have a vision model (GPT-4o by default) grade each screenshot
-// against the VERBATIM Gate A/B rubric as a harsh critic — Gate A (A1..A5
-// substance) + Gate B (B1..B5 anti-slop), each 0–100 — PLUS an explicit INV-18
-// check that BOTH the architecture diagram and the flow diagram are present and
-// read clearly. headlineScore = MIN across all 10 criteria. A device passes iff
-// headlineScore >= 95 AND its INV-18 check is clean. The build passes iff BOTH
-// devices pass. Malformed / missing per-criterion scores → LOUD STOP, never a
-// silent pass (ADR-0005 loud-fail postcondition; DDD §12.3).
+// browser (Playwright) at 390px (mobile) + 1440px (desktop), then grade it on two
+// independent channels that DON'T fight each other:
+//
+//   (1) INV-18 PRESENCE — a deterministic DOM check (NOT the vision model). Playwright
+//       asserts the ARCHITECTURE diagram AND the PROCESS/DATA-FLOW diagram elements
+//       exist and are actually visible (rendered box > 0, not display:none) inside the
+//       mandatory #how-it-works block. Present/absent is decided HERE, in the DOM — the
+//       vision model is never asked "is it there?", only "does it read clearly?".
+//
+//   (2) CRAFT + SUBSTANCE — the GPT-4o vision grade against the VERBATIM Gate A/B
+//       rubric (A1..A5 substance + B1..B5 anti-slop, each 0–100), graded from a few
+//       FULL-RESOLUTION, viewport-height SECTION CROPS (hero · what-it-is · how-it-works
+//       · get-started · the-pack), NOT one giant full-page screenshot downscaled into
+//       mush. Each crop is capped at the device viewport so the model judges real,
+//       sharp pixels (typography, alignment, imagery craft, diagram legibility).
+//
+// headlineScore = MIN across all 10 criteria. A device passes iff headlineScore >= 95
+// AND INV-18 is clean (both diagrams DOM-present + DOM-visible + vision says each reads
+// clearly). The build passes iff BOTH devices pass. Malformed / missing per-criterion
+// scores → LOUD STOP, never a silent pass (ADR-0005 loud-fail postcondition; DDD §12.3).
 //
 // PURE: reads ONLY its declared slice of build.json (the `page` slot) + the
 //   OPENAI_API_KEY from the environment. Writes ONLY the `quality` slot + its two
@@ -31,6 +42,31 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const _ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// OpenAI key from env (OPENAI_API_KEY | OPEN_AI_KEY) else the repo-root .env — mirrors
+// generate-image so the grader uses the SAME credential the rest of the recipe does. Secrets
+// still come from the environment / a gitignored .env, never from build.json (CONTRACT (d)).
+function loadOpenAiKey() {
+  const fromProc = process.env.OPENAI_API_KEY || process.env.OPEN_AI_KEY;
+  if (fromProc && fromProc.trim()) return fromProc.trim();
+  let text;
+  try { text = fs.readFileSync(path.join(_ROOT, '.env'), 'utf8'); } catch { return null; }
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq === -1) continue;
+    const k = line.slice(0, eq).trim();
+    if (k !== 'OPENAI_API_KEY' && k !== 'OPEN_AI_KEY') continue;
+    let v = line.slice(eq + 1).trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    if (v.trim()) return v.trim();
+  }
+  return null;
+}
 
 // ----------------------------------------------------------------------------
 // Uniform return: stdout carries the SINGLE JSON result object and nothing else.
@@ -46,17 +82,47 @@ const log = (msg) => process.stderr.write(`[quality-grade] ${msg}\n`);
 // The dual-gate rubric — VERBATIM from ADR-0005 / DDD §12.2. Handed to the vision
 // model as a harsh critic. Do NOT paraphrase: this is load-bearing.
 // ----------------------------------------------------------------------------
-const RUBRIC = `You are a HARSH design-and-substance critic grading ONE full-page screenshot of a
-software-explainer web page. Score every criterion 0–100. Be brutal: 95+ means
-"someone who genuinely gives a shit made this and a stranger would smile and say
-that's really cool". Generic AI-template output scores in the 60s–80s, never 95.
+const RUBRIC = `You are an EXACTING design-and-substance critic grading a software-explainer web page.
+You are shown SEVERAL full-resolution, sharp SECTION CROPS of ONE page (in document
+order) — together they represent the whole page. Score every criterion 0–100. Judge the
+page AS A WHOLE from the crops; do not penalise a criterion merely because one crop
+doesn't show everything.
+
+You are CALIBRATED, not stingy. Excellence is real and reachable: when a criterion
+genuinely clears the bar you award 90s — INCLUDING 95–100 — and you do NOT reflexively
+cap at 90. Slop is equally real: when a criterion is generic or broken you score it low
+and mean it. Your job is to place each criterion in the RIGHT band by the concrete
+SIGNALS below, never to cluster everything in a cautious 70s–80s middle. A genuinely
+publish-ready page reaches 95–100 on the criteria it nails; a templated one does not.
+
+SCORING BANDS — anchor every Gate A and Gate B criterion to these SIGNALS, not to a vibe:
+- 95–100  EXCEPTIONAL / publish-ready. A senior engineer sees it and says "I want to put
+  this out." Signals: bespoke art direction you could NOT get from a template; a hero or
+  diagram that makes you stop and look; copy that names the reader's real situation and the
+  payoff in their own terms; diagrams that actually TEACH the mechanism; every section earns
+  its place; nothing reads as generic. AWARD this whenever the criterion truly matches.
+- 85–94   STRONG, minor nits. Clearly made by someone who cares — cohesive, intentional,
+  mostly delightful — but one or two small, nameable flaws (a slightly cramped section, an
+  image more decorative than explanatory, one wobble in the type hierarchy). Excellent-minus.
+- 70–84   DECENT but generic or uneven. Competent and clean yet templated and forgettable,
+  OR substance is present but never lands "why it matters to ME," OR the craft is fine but
+  the story is just a list of facts. Nothing broken; nothing memorable.
+- 50–69   MEDIOCRE. Flat, listy, default-feeling. Real gaps: weak hierarchy, decorative-only
+  imagery, no narrative pull, the reader is assumed to already care.
+- below 40  AI SLOP. Lorem-ipsum energy, default system fonts, stock-template layout, no
+  story, no reader in mind — obviously "an LLM dumped this and nobody loved it."
+
+Most real, professional pages land 85–94 on their strong criteria and lower on the weak
+ones. Calibration means ACCURATE, not lenient: do not inflate slop to 95, and do not
+deflate genuine excellence to 85 out of habit.
 
 GATE A — "Do they actually get it?" (substance):
 - A1 Visual effectiveness — compelling vs flat/forgettable.
 - A2 Storytelling — tells a story vs lists facts.
 - A3 Clueless→convinced — zero knowledge → why it matters → real examples → "oh, cool".
-- A4 Usefulness-to-ME — explicitly answers "how is this useful to YOU" (cures
-  engineer-blindness — the assumption the reader already cares).
+- A4 Usefulness-to-ME — explicitly answers "how is this useful to YOU" in the reader's OWN
+  terms (names a concrete situation + the payoff). Cures engineer-blindness — the assumption
+  the reader already cares.
 - A5 Completeness of the arc — never-seen → ready to implement.
 
 GATE B — "Did someone who gives a shit make this?" (craft / anti-slop):
@@ -65,17 +131,23 @@ GATE B — "Did someone who gives a shit make this?" (craft / anti-slop):
 - B3 Spacing & rhythm — breathes, consistent vs cramped / random.
 - B4 Strength & polish — cohesive, deliberate vs generic AI-template slop.
 - B5 Imagery craft — beautiful + explanatory + sequenced high→low vs pretty-but-useless;
-  INCLUDING the structural SVG diagrams (crisp, legible, genuinely explanatory) and the
-  social card, both judged for delight + craft.
+  INCLUDING the structural SVG diagrams (crisp, legible, genuinely explanatory),
+  judged for delight + craft.
 
-INV-18 — the three questions every developer asks. TWO diagrams are MANDATORY on every
-explainer and must BOTH be present and read clearly on THIS screenshot:
-- an ARCHITECTURE diagram (how it is constructed — modules / components / dependencies), and
-- a PROCESS / DATA-FLOW diagram (how it works — the runtime flow).
+INV-18 — CLARITY ONLY. The page is already DOM-verified to CONTAIN both an ARCHITECTURE
+diagram (modules / components / dependencies) and a PROCESS / DATA-FLOW diagram (the
+runtime flow); they live in the "How it works / How is it built?" crop. You do NOT
+decide whether they exist. Your ONLY job for INV-18 is to say whether EACH diagram, as
+rendered in the crops you can see, READS CLEARLY — legible labels, sensible structure,
+not a blurry or scrambled mess. If a diagram is legible and explanatory, readsClearly
+is true; if it's illegible/garbled in the crop, readsClearly is false.
 
-For EACH criterion give a written rationale that cites what you actually SEE in the image.`;
+For EACH criterion give a written rationale that cites what you actually SEE in the crops
+AND names the band you placed it in (e.g. "85–94: strong, but …") so the score is auditable.`;
 
 // Strict JSON shape the grader MUST return (response_format: json_object).
+// NOTE: presence/visibility of the two diagrams is decided by the DOM check, NOT here —
+// the model only reports whether each one READS CLEARLY in the crops.
 const RESPONSE_SPEC = `Return ONLY a JSON object, no prose, with EXACTLY this shape:
 {
   "gateA": { "A1": <int 0-100>, "A2": <int>, "A3": <int>, "A4": <int>, "A5": <int> },
@@ -84,17 +156,15 @@ const RESPONSE_SPEC = `Return ONLY a JSON object, no prose, with EXACTLY this sh
     "A1": "<what you SAW>", "A2": "...", "A3": "...", "A4": "...", "A5": "...",
     "B1": "...", "B2": "...", "B3": "...", "B4": "...", "B5": "..."
   },
-  "inv18": {
-    "architecturePresent":       <true|false>,
+  "clarity": {
     "architectureReadsClearly":  <true|false>,
     "architectureNote":          "<what you SAW of the architecture diagram>",
-    "flowPresent":               <true|false>,
     "flowReadsClearly":          <true|false>,
     "flowNote":                  "<what you SAW of the flow/process diagram>"
   }
 }
-Every score is an integer 0–100. Every rationale is a non-empty string citing the image.
-A missing/illegible diagram is a HARD INV-18 fail — say so honestly, do not be generous.`;
+Every score is an integer 0–100. Every rationale is a non-empty string citing the crops.
+For clarity, judge legibility honestly — an illegible/garbled diagram is readsClearly:false.`;
 
 const CRITERIA_A = ['A1', 'A2', 'A3', 'A4', 'A5'];
 const CRITERIA_B = ['B1', 'B2', 'B3', 'B4', 'B5'];
@@ -137,10 +207,89 @@ function startServer(rootDir) {
   });
 }
 
+// The representative SECTION crops the vision model grades for craft + substance.
+// Each is captured at the device viewport (a viewport-HEIGHT segment, anchored at the
+// section's top) so it is full-resolution and never downscaled into mush. The two
+// MANDATORY diagrams are captured separately as dedicated element crops (below) so the
+// grader always SEES them in full, not pushed off the bottom of a viewport.
+const HEADER_OFFSET = 90; // clears the sticky .site-head so the section heading is visible
+const CROP_SECTIONS = [
+  { key: 'hero',       selector: '.hero, #top', label: 'Hero — the opening' },
+  { key: 'whatItIs',   selector: '#what-it-is', label: 'What it is — substance + the big-idea diagram' },
+  { key: 'getStarted', selector: '#get-started', label: 'Get started — how to begin' },
+  { key: 'pack',       selector: '#the-pack',   label: 'AI knowledge pack — the download block' },
+];
+
 // ----------------------------------------------------------------------------
-// Render + full-page screenshot one device. Returns the screenshot path.
+// DETERMINISTIC INV-18 PRESENCE CHECK (in the DOM, never the vision model).
+// The architecture + flow diagrams are mandatory and live in the #how-it-works
+// block (assemble-page Station 6). Assert each EXISTS and is VISIBLE (rendered box
+// > 0, not display:none / visibility:hidden / opacity:0). Classify by tier label /
+// src / alt, with a positional fallback (first diagram = architecture, second = flow)
+// so it stays robust to per-build asset filenames. Also returns the figure INDEX of
+// each so renderDevice can capture exactly that figure for the clarity grade.
+// MUST be run AFTER the full-page screenshot so lazy <img>s are loaded (else a
+// not-yet-loaded diagram has a zero box and reads as "not visible").
 // ----------------------------------------------------------------------------
-async function screenshotDevice(chromium, url, device, outPath) {
+async function checkDiagramsInDom(page) {
+  return page.evaluate(() => {
+    const out = {
+      architecturePresent: false, architectureVisible: false, architectureIndex: -1,
+      flowPresent: false, flowVisible: false, flowIndex: -1,
+      figureCount: 0, details: [],
+    };
+    const sec = document.querySelector('#how-it-works');
+    if (!sec) return out;
+    const isVis = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0 && r.width > 2 && r.height > 2;
+    };
+    const figs = Array.from(sec.querySelectorAll('figure.diagram'));
+    out.figureCount = figs.length;
+    figs.forEach((fig, i) => {
+      const img = fig.querySelector('img');
+      const tier = (fig.querySelector('.tier')?.textContent || '').toLowerCase();
+      const src = (img?.getAttribute('src') || '').toLowerCase();
+      const alt = (img?.getAttribute('alt') || '').toLowerCase();
+      const hay = `${tier} ${src} ${alt}`;
+      const vis = isVis(img);
+      const isArch = /architect/.test(hay);
+      const isFlow = /\bflow\b|data.?flow|process|runtime/.test(hay);
+      out.details.push({ index: i, tier, src, vis, isArch, isFlow });
+      if (isArch && out.architectureIndex < 0) { out.architecturePresent = true; out.architectureVisible = vis; out.architectureIndex = i; }
+      if (isFlow && out.flowIndex < 0) { out.flowPresent = true; out.flowVisible = vis; out.flowIndex = i; }
+    });
+    // positional fallback when the two mandatory diagrams aren't name-classifiable
+    if (out.architectureIndex < 0 && figs.length >= 1) {
+      out.architectureIndex = 0; out.architecturePresent = true; out.architectureVisible = isVis(figs[0].querySelector('img'));
+    }
+    if (out.flowIndex < 0 && figs.length >= 2) {
+      const fi = out.architectureIndex === 0 ? 1 : 0;
+      out.flowIndex = fi; out.flowPresent = true; out.flowVisible = isVis(figs[fi].querySelector('img'));
+    }
+    return out;
+  });
+}
+
+// scroll an element to the top of the viewport INSTANTLY (the page sets
+// scroll-behavior:smooth, which would otherwise leave a crop mid-animation).
+async function scrollToTop(page, loc, offset) {
+  await loc.evaluate((el, off) => {
+    const y = el.getBoundingClientRect().top + window.scrollY - off;
+    window.scrollTo(0, Math.max(0, y));
+  }, offset);
+  await page.waitForTimeout(160);
+}
+
+// ----------------------------------------------------------------------------
+// Render one device: settle the page, save the full-page screenshot (which forces
+// every lazy <img> to load), THEN run the deterministic DOM diagram check, then
+// capture the grading crops — viewport-segment section crops + dedicated element
+// crops of the two mandatory diagrams. Returns { domInv18, fullPagePath, crops[], pageHeight }.
+// ----------------------------------------------------------------------------
+async function renderDevice(chromium, url, device, assetsDir) {
   const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({
@@ -152,13 +301,84 @@ async function screenshotDevice(chromium, url, device, outPath) {
     const page = await context.newPage();
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!resp || !resp.ok()) throw new Error(`page did not load OK (status ${resp ? resp.status() : 'none'}) at ${url}`);
-    // Let CSS/web-fonts/lazy assets settle, then freeze any animations for a stable shot.
-    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch { /* networkidle best-effort */ }
-    try { await page.evaluate(() => (document.fonts ? document.fonts.ready : Promise.resolve())); } catch { /* fonts best-effort */ }
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: outPath, fullPage: true });
+    try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch { /* best-effort */ }
+    try { await page.evaluate(() => (document.fonts ? document.fonts.ready : Promise.resolve())); } catch { /* best-effort */ }
+    // neutralise scroll-behavior:smooth so every programmatic scroll lands instantly
+    await page.addStyleTag({ content: 'html, body { scroll-behavior: auto !important; }' }).catch(() => {});
+    await page.waitForTimeout(500);
+
+    // Force EVERY lazy <img> to load by actually scrolling the page through the viewport.
+    // Playwright's full-page CDP capture does NOT reliably fire IntersectionObserver
+    // lazy-loading, so without this pass the diagrams below the fold stay unloaded (zero
+    // box) and the DOM visibility check — and the artifact — would both be wrong.
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        let y = 0; const step = Math.max(200, window.innerHeight);
+        const t = setInterval(() => {
+          window.scrollTo(0, y); y += step;
+          if (y >= document.documentElement.scrollHeight) { clearInterval(t); resolve(); }
+        }, 60);
+      });
+      await Promise.all(Array.from(document.images).map((img) => img.complete ? null :
+        new Promise((res) => { img.addEventListener('load', res, { once: true }); img.addEventListener('error', res, { once: true }); setTimeout(res, 3000); })));
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(300);
+
+    const pageHeight = await page.evaluate(() => Math.max(
+      document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0));
+
+    // (1) full-page artifact — every image is now loaded (the human/email screenshot).
+    const fullPagePath = path.join(assetsDir, device.file);
+    await page.screenshot({ path: fullPagePath, fullPage: true });
+
+    // (2) deterministic DOM presence/visibility + figure indices of the two mandatory
+    //     diagrams — honest now that all images are loaded (no zero-height lazies).
+    const domInv18 = await checkDiagramsInDom(page);
+
+    const crops = [];
+    // (3a) viewport-segment SECTION crops — sharp, capped at the device viewport
+    for (const sec of CROP_SECTIONS) {
+      const loc = page.locator(sec.selector).first();
+      if (!(await loc.count())) { log(`  crop ${sec.key}: selector "${sec.selector}" not found — skipped`); continue; }
+      try {
+        await scrollToTop(page, loc, HEADER_OFFSET);
+        const cropPath = path.join(assetsDir, `grade-${device.tag}-${sec.key}.png`);
+        await page.screenshot({ path: cropPath, fullPage: false }); // exactly the device viewport
+        crops.push({ key: sec.key, label: sec.label, path: cropPath });
+      } catch (e) {
+        log(`  crop ${sec.key}: capture failed (${e?.message || e}) — skipped`);
+      }
+    }
+    // (3b) dedicated element crops of the two MANDATORY diagrams (full diagram, never clipped),
+    //      inserted after the hero so they sit in document order for the grader.
+    const diagFigs = page.locator('#how-it-works figure.diagram');
+    const diagSpecs = [
+      { idx: domInv18.architectureIndex, key: 'architecture', label: 'ARCHITECTURE diagram — modules / components / dependencies (how it is built)' },
+      { idx: domInv18.flowIndex, key: 'flow', label: 'PROCESS / DATA-FLOW diagram — the runtime flow (how it works)' },
+    ];
+    const diagCrops = [];
+    for (const d of diagSpecs) {
+      if (d.idx < 0) { log(`  diagram ${d.key}: no figure found in #how-it-works — skipped`); continue; }
+      try {
+        const f = diagFigs.nth(d.idx);
+        await f.scrollIntoViewIfNeeded().catch(() => {});
+        const cropPath = path.join(assetsDir, `grade-${device.tag}-${d.key}.png`);
+        await f.screenshot({ path: cropPath }); // element screenshot — the whole figure, instant scroll
+        diagCrops.push({ key: d.key, label: d.label, path: cropPath });
+      } catch (e) {
+        log(`  diagram ${d.key}: capture failed (${e?.message || e}) — skipped`);
+      }
+    }
+    // order the grader sees: hero, then the two diagrams, then the rest of the arc
+    const ordered = [];
+    const heroCrop = crops.find((c) => c.key === 'hero');
+    if (heroCrop) ordered.push(heroCrop);
+    ordered.push(...diagCrops);
+    for (const c of crops) if (c.key !== 'hero') ordered.push(c);
+
     await context.close();
-    return outPath;
+    return { domInv18, fullPagePath, crops: ordered, pageHeight };
   } finally {
     await browser.close();
   }
@@ -170,8 +390,21 @@ async function screenshotDevice(chromium, url, device, outPath) {
 function isScore(n) { return typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100; }
 function isText(s) { return typeof s === 'string' && s.trim().length > 0; }
 
-async function gradeImage({ apiKey, model, baseUrl, pngPath, deviceLabel }) {
-  const b64 = fs.readFileSync(pngPath).toString('base64');
+async function gradeCrops({ apiKey, model, baseUrl, crops, deviceLabel }) {
+  if (!Array.isArray(crops) || crops.length < 2) {
+    throw new Error(`too few section crops captured for ${deviceLabel} (need >= 2, got ${crops?.length || 0}) — cannot grade reliably`);
+  }
+  // interleave a label + the full-resolution crop for each section, in document order
+  const userContent = [{
+    type: 'text',
+    text: `Below are ${crops.length} full-resolution section crops of ONE explainer page rendered at ${deviceLabel}, in document order. They represent the whole page. Apply Gate A and Gate B to the page as a whole, and report INV-18 CLARITY for the two diagrams (in the "How it works" crop). Return ONLY the JSON object specified.`,
+  }];
+  for (let i = 0; i < crops.length; i++) {
+    const b64 = fs.readFileSync(crops[i].path).toString('base64');
+    userContent.push({ type: 'text', text: `[Crop ${i + 1}/${crops.length}] ${crops[i].label}:` });
+    userContent.push({ type: 'image_url', image_url: { url: `data:image/png;base64,${b64}`, detail: 'high' } });
+  }
+
   const body = {
     model,
     temperature: 0,
@@ -179,13 +412,7 @@ async function gradeImage({ apiKey, model, baseUrl, pngPath, deviceLabel }) {
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: `${RUBRIC}\n\n${RESPONSE_SPEC}` },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: `Grade this FULL-PAGE screenshot of the explainer page rendered at ${deviceLabel}. Apply Gate A, Gate B, and the INV-18 diagram check. Return ONLY the JSON object specified.` },
-          { type: 'image_url', image_url: { url: `data:image/png;base64,${b64}`, detail: 'high' } },
-        ],
-      },
+      { role: 'user', content: userContent },
     ],
   };
 
@@ -212,59 +439,75 @@ async function gradeImage({ apiKey, model, baseUrl, pngPath, deviceLabel }) {
 
   // --- LOUD validation: a grader that cannot return a complete per-criterion
   //     scorecard is a BUILD FAILURE, never a silent pass (ADR-0005 / DDD §12). ---
-  const gateA = g.gateA, gateB = g.gateB, rationales = g.rationales, inv18 = g.inv18;
-  if (!gateA || !gateB || !rationales || !inv18) throw new Error(`grader response for ${deviceLabel} missing gateA/gateB/rationales/inv18`);
+  const gateA = g.gateA, gateB = g.gateB, rationales = g.rationales, clarity = g.clarity;
+  if (!gateA || !gateB || !rationales || !clarity) throw new Error(`grader response for ${deviceLabel} missing gateA/gateB/rationales/clarity`);
   for (const k of CRITERIA_A) if (!isScore(gateA[k])) throw new Error(`grader score gateA.${k} invalid/missing for ${deviceLabel} (got ${JSON.stringify(gateA[k])})`);
   for (const k of CRITERIA_B) if (!isScore(gateB[k])) throw new Error(`grader score gateB.${k} invalid/missing for ${deviceLabel} (got ${JSON.stringify(gateB[k])})`);
   for (const k of [...CRITERIA_A, ...CRITERIA_B]) if (!isText(rationales[k])) throw new Error(`grader rationale ${k} missing/empty for ${deviceLabel}`);
-  for (const k of ['architecturePresent', 'architectureReadsClearly', 'flowPresent', 'flowReadsClearly']) {
-    if (typeof inv18[k] !== 'boolean') throw new Error(`grader inv18.${k} must be boolean for ${deviceLabel} (got ${JSON.stringify(inv18[k])})`);
+  for (const k of ['architectureReadsClearly', 'flowReadsClearly']) {
+    if (typeof clarity[k] !== 'boolean') throw new Error(`grader clarity.${k} must be boolean for ${deviceLabel} (got ${JSON.stringify(clarity[k])})`);
   }
 
   return {
     gateA: Object.fromEntries(CRITERIA_A.map((k) => [k, Math.round(gateA[k])])),
     gateB: Object.fromEntries(CRITERIA_B.map((k) => [k, Math.round(gateB[k])])),
     rationales: Object.fromEntries([...CRITERIA_A, ...CRITERIA_B].map((k) => [k, String(rationales[k]).trim()])),
-    inv18: {
-      architecturePresent: inv18.architecturePresent,
-      architectureReadsClearly: inv18.architectureReadsClearly,
-      architectureNote: isText(inv18.architectureNote) ? inv18.architectureNote.trim() : '',
-      flowPresent: inv18.flowPresent,
-      flowReadsClearly: inv18.flowReadsClearly,
-      flowNote: isText(inv18.flowNote) ? inv18.flowNote.trim() : '',
+    clarity: {
+      architectureReadsClearly: clarity.architectureReadsClearly,
+      architectureNote: isText(clarity.architectureNote) ? clarity.architectureNote.trim() : '',
+      flowReadsClearly: clarity.flowReadsClearly,
+      flowNote: isText(clarity.flowNote) ? clarity.flowNote.trim() : '',
     },
   };
 }
 
 // ----------------------------------------------------------------------------
-// Assemble a per-device scorecard from a graded result + collect refine notes.
-// headlineScore = MIN across all 10 criteria (never the mean — DDD §12.3 / INV-05).
-// A device passes iff headlineScore >= 95 AND INV-18 is clean on that device.
+// Assemble a per-device scorecard. headlineScore = MIN across all 10 criteria
+// (never the mean — DDD §12.3 / INV-05). INV-18 is the AND of the DETERMINISTIC DOM
+// verdict (present + visible, from checkDiagramsInDom) and the VISION clarity verdict
+// (reads-clearly). A device passes iff headlineScore >= 95 AND INV-18 is clean.
 // ----------------------------------------------------------------------------
-function buildScorecard(deviceLabel, graded, screenshotPath) {
+function buildScorecard(deviceLabel, graded, domInv18, screenshotPath, cropPaths) {
   const all = [...CRITERIA_A.map((k) => graded.gateA[k]), ...CRITERIA_B.map((k) => graded.gateB[k])];
   const headlineScore = Math.min(...all);
-  const inv18Ok = graded.inv18.architecturePresent && graded.inv18.architectureReadsClearly &&
-                  graded.inv18.flowPresent && graded.inv18.flowReadsClearly;
+
+  // merged INV-18: presence/visibility from the DOM, clarity from the vision model.
+  const inv18 = {
+    architecturePresent: domInv18.architecturePresent,
+    architectureVisible: domInv18.architectureVisible,
+    architectureReadsClearly: domInv18.architecturePresent && domInv18.architectureVisible && graded.clarity.architectureReadsClearly,
+    architectureNote: graded.clarity.architectureNote,
+    flowPresent: domInv18.flowPresent,
+    flowVisible: domInv18.flowVisible,
+    flowReadsClearly: domInv18.flowPresent && domInv18.flowVisible && graded.clarity.flowReadsClearly,
+    flowNote: graded.clarity.flowNote,
+    source: 'presence+visibility=DOM, clarity=vision',
+  };
+  const inv18Ok = inv18.architecturePresent && inv18.architectureVisible && inv18.architectureReadsClearly &&
+                  inv18.flowPresent && inv18.flowVisible && inv18.flowReadsClearly;
+  inv18.passed = inv18Ok;
   const passed = headlineScore >= 95 && inv18Ok;
 
   const refineNotes = [];
   for (const k of CRITERIA_A) if (graded.gateA[k] < 95) refineNotes.push({ device: deviceLabel, criterion: k, score: graded.gateA[k], saw: graded.rationales[k] });
   for (const k of CRITERIA_B) if (graded.gateB[k] < 95) refineNotes.push({ device: deviceLabel, criterion: k, score: graded.gateB[k], saw: graded.rationales[k] });
-  if (!graded.inv18.architecturePresent) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `ARCHITECTURE diagram MISSING. ${graded.inv18.architectureNote}` });
-  else if (!graded.inv18.architectureReadsClearly) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `ARCHITECTURE diagram does not read clearly. ${graded.inv18.architectureNote}` });
-  if (!graded.inv18.flowPresent) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `FLOW diagram MISSING. ${graded.inv18.flowNote}` });
-  else if (!graded.inv18.flowReadsClearly) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `FLOW diagram does not read clearly. ${graded.inv18.flowNote}` });
+  if (!inv18.architecturePresent) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `ARCHITECTURE diagram MISSING from the DOM (#how-it-works figure.diagram).` });
+  else if (!inv18.architectureVisible) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `ARCHITECTURE diagram present in DOM but NOT visible (zero rendered box / hidden).` });
+  else if (!inv18.architectureReadsClearly) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `ARCHITECTURE diagram does not read clearly. ${inv18.architectureNote}` });
+  if (!inv18.flowPresent) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `FLOW diagram MISSING from the DOM (#how-it-works figure.diagram).` });
+  else if (!inv18.flowVisible) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `FLOW diagram present in DOM but NOT visible (zero rendered box / hidden).` });
+  else if (!inv18.flowReadsClearly) refineNotes.push({ device: deviceLabel, criterion: 'INV-18', score: 0, saw: `FLOW diagram does not read clearly. ${inv18.flowNote}` });
 
   const scorecard = {
     device: deviceLabel,
     gateA: graded.gateA,
     gateB: graded.gateB,
     rationales: graded.rationales,
-    inv18: { ...graded.inv18, passed: inv18Ok },
+    inv18,
     headlineScore,
     passed,
     screenshot: screenshotPath,
+    gradedCrops: cropPaths,
   };
   return { scorecard, refineNotes };
 }
@@ -295,8 +538,8 @@ async function main() {
   if (!fs.existsSync(htmlPath)) return emit(false, {}, `page.htmlPath does not exist on disk: ${htmlPath}`);
 
   // --- SECRET from env (never from build.json). No key → CANNOT evaluate → loud. ---
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return emit(false, {}, 'OPENAI_API_KEY is not set — the page cannot be graded; refusing to emit a silent PASS');
+  const apiKey = loadOpenAiKey();
+  if (!apiKey) return emit(false, {}, 'no OpenAI key found (set OPENAI_API_KEY / OPEN_AI_KEY in the environment or repo-root .env) — the page cannot be graded; refusing to emit a silent PASS');
   const model = process.env.QUALITY_VISION_MODEL || 'gpt-4o';
   const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
@@ -309,8 +552,8 @@ async function main() {
   fs.mkdirSync(assetsDir, { recursive: true });
 
   const DEVICES = [
-    { label: 'mobile(390)', width: 390, height: 844, dsf: 2, isMobile: true, file: 'screenshot-mobile-390.png' },
-    { label: 'desktop(1440)', width: 1440, height: 900, dsf: 1, isMobile: false, file: 'screenshot-desktop-1440.png' },
+    { label: 'mobile(390)', tag: 'mobile-390', width: 390, height: 844, dsf: 2, isMobile: true, file: 'screenshot-mobile-390.png' },
+    { label: 'desktop(1440)', tag: 'desktop-1440', width: 1440, height: 900, dsf: 1, isMobile: false, file: 'screenshot-desktop-1440.png' },
   ];
 
   let started;
@@ -324,16 +567,18 @@ async function main() {
   const scorecard = [];
   const refineNotes = [];
   const screenshots = {};
+  const pageHeights = {};
   try {
     for (const d of DEVICES) {
-      const shotPath = path.join(assetsDir, d.file);
-      log(`rendering ${d.label} → ${path.relative(buildDir, shotPath)}`);
-      await screenshotDevice(chromium, baseHref, d, shotPath);
-      screenshots[d.isMobile ? 'mobile' : 'desktop'] = shotPath;
+      log(`rendering ${d.label} → full-page artifact + section crops`);
+      const { domInv18, fullPagePath, crops, pageHeight } = await renderDevice(chromium, baseHref, d, assetsDir);
+      screenshots[d.isMobile ? 'mobile' : 'desktop'] = fullPagePath;
+      pageHeights[d.isMobile ? 'mobile' : 'desktop'] = pageHeight;
+      log(`${d.label}: pageHeight=${pageHeight}px, crops=${crops.map((c) => c.key).join(',')}, DOM inv18 arch(present=${domInv18.architecturePresent},vis=${domInv18.architectureVisible}) flow(present=${domInv18.flowPresent},vis=${domInv18.flowVisible})`);
 
-      log(`grading ${d.label} with ${model} …`);
-      const graded = await gradeImage({ apiKey, model, baseUrl, pngPath: shotPath, deviceLabel: d.label });
-      const { scorecard: card, refineNotes: notes } = buildScorecard(d.label, graded, shotPath);
+      log(`grading ${d.label} with ${model} from ${crops.length} full-res crops …`);
+      const graded = await gradeCrops({ apiKey, model, baseUrl, crops, deviceLabel: d.label });
+      const { scorecard: card, refineNotes: notes } = buildScorecard(d.label, graded, domInv18, fullPagePath, crops.map((c) => c.path));
       scorecard.push(card);
       refineNotes.push(...notes);
       log(`${d.label}: headline=${card.headlineScore} inv18=${card.inv18.passed ? 'ok' : 'FAIL'} passed=${card.passed}`);
@@ -354,6 +599,7 @@ async function main() {
     iterations: prevIterations + 1,
     visionModel: model,
     screenshots,
+    pageHeights,
     refineNotes,
     gradedAt: new Date().toISOString(),
   };
@@ -366,10 +612,20 @@ async function main() {
   return emit(true, {
     quality,
     screenshots,
+    pageHeights,
     passed,
     headline: { mobile: scorecard[0]?.headlineScore, desktop: scorecard[1]?.headlineScore },
     refineNoteCount: refineNotes.length,
   }, null);
 }
 
-main().catch((e) => emit(false, {}, `unexpected error: ${e?.stack || e?.message || e}`));
+// Auto-run ONLY when invoked directly (node tools/quality-grade.mjs <build-dir>). When this
+// module is IMPORTED (e.g. a calibration harness that reuses the verbatim rubric + grader to
+// validate the bands against a known-good page — CONTRACT (c), individually testable), the
+// exports below are available without firing main(). The brain's direct invocation is unchanged.
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isDirectRun) {
+  main().catch((e) => emit(false, {}, `unexpected error: ${e?.stack || e?.message || e}`));
+}
+
+export { RUBRIC, RESPONSE_SPEC, CRITERIA_A, CRITERIA_B, gradeCrops, loadOpenAiKey };

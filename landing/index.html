@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Repo Explainer — turn any GitHub repo into a polished visual explainer</title>
+  <meta name="description" content="Repo Explainer reads a GitHub repository and builds a standalone, art-directed explainer page — plus a downloadable AI knowledge pack — that takes a newcomer from 'never seen this' to 'I get it, and I want to use it.' Run it with one command: npx repo-explainer <github-url>." />
+  <meta name="author" content="Stuart Kerr — ISOvision.ai" />
+  <meta name="theme-color" content="#0a0b11" />
+  <link rel="canonical" href="https://repoexplainer.isovision.ai/" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/favicon.svg" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Repo Explainer" />
+  <meta property="og:title" content="Repo Explainer — turn any GitHub repo into a polished visual explainer" />
+  <meta property="og:description" content="Reads a repo and builds a standalone, art-directed explainer page + a downloadable AI knowledge pack. Take a newcomer from 'never seen this' to 'I get it — and I want to use it.'" />
+  <meta property="og:url" content="https://repoexplainer.isovision.ai/" />
+  <meta property="og:image" content="https://repoexplainer.isovision.ai/assets/og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Repo Explainer — a spectrum aperture turning a plain README into a polished, art-directed explainer page." />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Repo Explainer — turn any GitHub repo into a polished visual explainer" />
+  <meta name="twitter:description" content="One command turns a repo into an art-directed explainer page + a downloadable AI knowledge pack. From 'never seen this' to 'I want to use it.'" />
+  <meta name="twitter:image" content="https://repoexplainer.isovision.ai/assets/og-card.png" />
+  <meta name="twitter:image:alt" content="Repo Explainer — a spectrum aperture turning a plain README into a polished explainer page." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Repo Explainer",
+    "applicationCategory": "DeveloperApplication",
+    "applicationSubCategory": "Documentation generator",
+    "operatingSystem": "macOS, Linux, Windows (Node.js)",
+    "description": "Repo Explainer reads a GitHub repository and produces a standalone, art-directed explainer page plus a downloadable AI knowledge pack (an RVF vector knowledge base, search tool and MCP server), so a newcomer goes from 'never seen this' to 'I get it, and I want to use it.'",
+    "url": "https://repoexplainer.isovision.ai/",
+    "softwareHelp": "https://repoexplainer.isovision.ai/#get-started",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": {
+      "@type": "Organization",
+      "name": "ISOvision.ai",
+      "url": "https://isovision.ai",
+      "founder": { "@type": "Person", "name": "Stuart Kerr" }
+    },
+    "creator": { "@type": "Person", "name": "Stuart Kerr" }
+  }
+  </script>
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="site-head">
+    <div class="wrap">
+      <a class="brand" href="#top" aria-label="Repo Explainer — home">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="brand-spec" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#a06bff"/><stop offset="30%" stop-color="#4f8cff"/>
+              <stop offset="52%" stop-color="#1fd6d6"/><stop offset="72%" stop-color="#3ee68a"/>
+              <stop offset="100%" stop-color="#ff6f9c"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="8" fill="#0c0d14"/>
+          <circle cx="16" cy="16" r="9.5" fill="none" stroke="url(#brand-spec)" stroke-width="2.4"/>
+          <circle cx="16" cy="16" r="6.4" fill="url(#brand-spec)" opacity="0.16"/>
+          <path d="M13.4 11.6 L21 16 L13.4 20.4 Z" fill="#eff1fc"/>
+        </svg>
+        <span><b>Repo</b> Explainer</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#what-you-get">What you get</a>
+        <a href="#get-started">Run it</a>
+        <a href="#quality">Quality</a>
+        <a href="#examples">Examples</a>
+        <a class="nav-cta" href="#get-started">Get started &rarr;</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <a id="top"></a>
+
+    <!-- ===================== HERO ===================== -->
+    <section class="hero" aria-labelledby="hero-h">
+      <div class="wrap">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="dot" aria-hidden="true"></span> The front door for your repo</p>
+            <h1 id="hero-h">Turn any GitHub repo into a <span class="grad">polished visual explainer</span> &mdash; plus a downloadable AI knowledge pack.</h1>
+            <p class="lede">
+              Repo Explainer reads a repository and builds a standalone, art-directed page that
+              takes a newcomer from <em>&ldquo;I&rsquo;ve never seen this&rdquo;</em> to
+              <em>&ldquo;I get it &mdash; and I want to use it.&rdquo;</em> It&rsquo;s the welcome
+              mat you forward; your README stays the technical reference.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="#get-started">Get started <span class="arr" aria-hidden="true">&rarr;</span></a>
+              <a class="btn btn-ghost" href="#examples">See examples</a>
+            </div>
+            <p class="hero-cmd">
+              <span class="lbl">one command</span>
+              <span class="cmd-text"><span class="tok">npx repo-explainer</span> &lt;github-url&gt;</span>
+            </p>
+            <div class="meta-row" aria-hidden="true">
+              <span>RUNS&nbsp;<b>anywhere Node does</b></span>
+              <span>OUTPUT&nbsp;<b>page · repo · AI pack</b></span>
+              <span>QUALITY&nbsp;<b>95+ on mobile &amp; desktop</b></span>
+            </div>
+          </div>
+
+          <figure class="hero-art">
+            <svg viewBox="0 0 680 460" role="img" aria-labelledby="hero-art-t hero-art-d">
+              <title id="hero-art-t">A plain README transforming into a polished explainer</title>
+              <desc id="hero-art-d">A dim README file on the left flows through a glowing full-spectrum aperture and becomes a vivid, art-directed explainer page on the right, complete with a hero image, headline and a small architecture diagram.</desc>
+              <defs>
+                <linearGradient id="spec-v" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#a06bff"/><stop offset="26%" stop-color="#4f8cff"/>
+                  <stop offset="48%" stop-color="#1fd6d6"/><stop offset="68%" stop-color="#3ee68a"/>
+                  <stop offset="84%" stop-color="#ffd23e"/><stop offset="100%" stop-color="#ff6f9c"/>
+                </linearGradient>
+                <linearGradient id="spec-hero" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#8b7bff"/><stop offset="50%" stop-color="#1fd6d6"/>
+                  <stop offset="100%" stop-color="#ff7bbd"/>
+                </linearGradient>
+                <radialGradient id="ap-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#1fd6d6" stop-opacity="0.55"/>
+                  <stop offset="100%" stop-color="#1fd6d6" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+
+              <!-- LEFT: dim source / README card -->
+              <g>
+                <rect x="26" y="118" width="208" height="224" rx="14" fill="#12131c" stroke="#2a2d3f" stroke-width="1.5"/>
+                <rect x="26" y="118" width="208" height="34" rx="14" fill="#181a26"/>
+                <rect x="26" y="138" width="208" height="14" fill="#181a26"/>
+                <circle cx="46" cy="135" r="4" fill="#3a3d52"/>
+                <circle cx="60" cy="135" r="4" fill="#3a3d52"/>
+                <circle cx="74" cy="135" r="4" fill="#3a3d52"/>
+                <text x="214" y="139" text-anchor="end" font-family="'JetBrains Mono',monospace" font-size="11" fill="#646a85">README.md</text>
+                <!-- faint monochrome text lines -->
+                <g fill="#33374a">
+                  <rect x="46" y="172" width="120" height="9" rx="4.5"/>
+                  <rect x="46" y="192" width="168" height="7" rx="3.5"/>
+                  <rect x="46" y="206" width="150" height="7" rx="3.5"/>
+                  <rect x="46" y="220" width="168" height="7" rx="3.5"/>
+                  <rect x="46" y="240" width="92"  height="7" rx="3.5"/>
+                  <rect x="46" y="260" width="168" height="7" rx="3.5"/>
+                  <rect x="46" y="274" width="138" height="7" rx="3.5"/>
+                  <rect x="46" y="294" width="168" height="7" rx="3.5"/>
+                  <rect x="46" y="308" width="110" height="7" rx="3.5"/>
+                </g>
+              </g>
+
+              <!-- CENTER: spectrum aperture + flow -->
+              <ellipse class="beam-sheen" cx="340" cy="230" rx="86" ry="150" fill="url(#ap-glow)"/>
+              <circle cx="340" cy="230" r="44" fill="none" stroke="url(#spec-v)" stroke-width="5"/>
+              <circle cx="340" cy="230" r="28" fill="url(#spec-v)" opacity="0.14"/>
+              <path d="M331 214 L353 230 L331 246 Z" fill="#eff1fc"/>
+              <!-- flow dots travelling source -> explainer -->
+              <circle class="flow"    cx="234" cy="216" r="4.5" fill="#8b7bff"/>
+              <circle class="flow f2" cx="234" cy="236" r="4.5" fill="#1fd6d6"/>
+              <circle class="flow f3" cx="234" cy="252" r="4.5" fill="#ff7bbd"/>
+
+              <!-- RIGHT: vivid explainer card -->
+              <g>
+                <rect x="446" y="64" width="210" height="332" rx="16" fill="#15161f" stroke="#3a3d57" stroke-width="1.5"/>
+                <!-- hero image block -->
+                <rect x="462" y="80" width="178" height="84" rx="10" fill="url(#spec-hero)"/>
+                <circle cx="492" cy="122" r="15" fill="#ffffff" opacity="0.28"/>
+                <path d="M512 142 q24 -34 52 -6 l24 28 H512 Z" fill="#ffffff" opacity="0.22"/>
+                <!-- headline + body bars -->
+                <rect x="462" y="178" width="150" height="13" rx="6.5" fill="#eff1fc"/>
+                <rect x="462" y="198" width="120" height="9"  rx="4.5" fill="#9398b2"/>
+                <rect x="462" y="214" width="166" height="7"  rx="3.5" fill="#4a4f68"/>
+                <rect x="462" y="227" width="140" height="7"  rx="3.5" fill="#4a4f68"/>
+                <!-- mini architecture/flow diagram -->
+                <g stroke="#34d6c6" stroke-width="2" fill="none" opacity="0.9">
+                  <line x1="486" y1="300" x2="540" y2="300"/>
+                  <line x1="568" y1="300" x2="600" y2="284"/>
+                  <line x1="568" y1="300" x2="600" y2="316"/>
+                </g>
+                <rect x="468" y="288" width="34" height="24" rx="6" fill="#1b1d29" stroke="#8b7bff" stroke-width="1.6"/>
+                <rect x="540" y="288" width="30" height="24" rx="6" fill="#1b1d29" stroke="#34d6c6" stroke-width="1.6"/>
+                <rect x="600" y="272" width="30" height="20" rx="5" fill="#1b1d29" stroke="#ff7bbd" stroke-width="1.6"/>
+                <rect x="600" y="306" width="30" height="20" rx="5" fill="#1b1d29" stroke="#ff7bbd" stroke-width="1.6"/>
+                <!-- spectrum footer strip + live dot -->
+                <rect x="462" y="356" width="178" height="6" rx="3" fill="url(#spec-v)"/>
+                <circle class="twinkle"    cx="470" cy="376" r="3.5" fill="#3ee68a"/>
+                <circle class="twinkle t2" cx="484" cy="376" r="3.5" fill="#34d6c6"/>
+                <circle class="twinkle t3" cx="498" cy="376" r="3.5" fill="#8b7bff"/>
+              </g>
+            </svg>
+            <figcaption><span class="live" aria-hidden="true"></span> README in &rarr; art-directed explainer + AI pack out</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== THE PROBLEM ===================== -->
+    <section class="band tight problem" aria-labelledby="problem-h">
+      <div class="wrap">
+        <h2 id="problem-h" class="visually-hidden">The problem</h2>
+        <blockquote class="pullquote">
+          <p>Great tools ship with READMEs written by people who already get it &mdash;
+            so a curious developer hits a wall of jargon and <span class="hl">quietly closes the tab.</span></p>
+          <p class="pq-foot">Not because the tool isn&rsquo;t good &mdash; because the <em>introduction</em> isn&rsquo;t.
+            Engineers ship things assuming people already know why they&rsquo;d care. They usually don&rsquo;t.
+            Repo Explainer&rsquo;s whole job is to cure that.</p>
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- ===================== WHAT YOU GET ===================== -->
+    <section class="band what-you-get" id="what-you-get" aria-labelledby="wyg-h">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow"><span class="dot" aria-hidden="true"></span> What you get</p>
+          <h2 id="wyg-h">One run, three things you keep.</h2>
+          <p>Each one is grounded in your repo&rsquo;s real source &mdash; no invented claims, no guesses.</p>
+        </div>
+        <div class="grid-3">
+          <article class="feature">
+            <span class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v12H3z"/><path d="M3 9h18"/><path d="M8 21h8M12 17v4"/></svg>
+            </span>
+            <h3>A live explainer page</h3>
+            <p>A captivating, plain-language page at its own URL &mdash; the thing you actually
+              <strong>forward</strong> to people. Bespoke art direction, real diagrams, real examples.</p>
+            <span class="badge">the page you share</span>
+          </article>
+          <article class="feature">
+            <span class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M8.4 6.6 15.6 8.4M16.4 11.2C16 14 13 15 8.6 15.4"/></svg>
+            </span>
+            <h3>A GitHub repo you co-own</h3>
+            <p>The explainer&rsquo;s own repository &mdash; you&rsquo;re added as a collaborator, so you can
+              edit it any time. <strong>Separate</strong> from your app&rsquo;s repo, never tangled with it.</p>
+            <span class="badge">yours to edit</span>
+          </article>
+          <article class="feature">
+            <span class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+            </span>
+            <h3>A downloadable AI pack</h3>
+            <p>An RVF vector knowledge base + search tool + MCP server, so other people&rsquo;s AI assistants
+              understand your project from the <strong>real source</strong> &mdash; not a guess.</p>
+            <span class="badge">for their AI</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GET STARTED ===================== -->
+    <section class="band get-started" id="get-started" aria-labelledby="gs-h">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow"><span class="dot" aria-hidden="true"></span> Get started</p>
+          <h2 id="gs-h">One brain, two doors. Pick whichever you live in.</h2>
+          <p>Both run the identical engine, so the result is the same however you start it.
+            Point it at any public GitHub URL and go.</p>
+        </div>
+
+        <div class="doors">
+          <div class="door">
+            <div class="door-top">
+              <span class="door-tag">recommended</span>
+              <h3>npx &mdash; works for anyone</h3>
+            </div>
+            <p class="door-sub">Zero install. Runs anywhere Node does, using <strong>your own Anthropic key</strong>.</p>
+            <div class="cmd">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code id="cmd-npx"><span class="tok">npx repo-explainer</span> <span class="arg">&lt;github-url&gt;</span></code>
+              <button class="copy-btn" type="button" data-copy="npx repo-explainer &lt;github-url&gt;" aria-label="Copy: npx repo-explainer &lt;github-url&gt;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+            <p class="door-note">Example: <code>npx repo-explainer https://github.com/you/your-project</code></p>
+          </div>
+
+          <div class="door secondary">
+            <div class="door-top">
+              <span class="door-tag">claude code</span>
+              <h3>The Claude Code plugin</h3>
+            </div>
+            <p class="door-sub">Install once, then explain any repo with a slash command from inside Claude Code.</p>
+            <div class="cmd">
+              <span class="prompt" aria-hidden="true">&rsaquo;</span>
+              <code id="cmd-install"><span class="tok">/plugin install</span> <span class="arg">repo-explainer</span></code>
+              <button class="copy-btn" type="button" data-copy="/plugin install repo-explainer" aria-label="Copy: /plugin install repo-explainer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+            <div class="cmd">
+              <span class="prompt" aria-hidden="true">&rsaquo;</span>
+              <code id="cmd-plugin"><span class="tok">/repo-explainer</span> <span class="arg">&lt;github-url&gt;</span></code>
+              <button class="copy-btn" type="button" data-copy="/repo-explainer &lt;github-url&gt;" aria-label="Copy: /repo-explainer &lt;github-url&gt;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+                <span class="copy-label">Copy</span>
+              </button>
+            </div>
+            <p class="door-note">One-time install &rarr; then <code>/repo-explainer</code> is always a keystroke away.</p>
+          </div>
+        </div>
+        <p class="visually-hidden" id="copy-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ===================== QUALITY ===================== -->
+    <section class="band quality" id="quality" aria-labelledby="q-h">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow"><span class="dot" aria-hidden="true"></span> How it&rsquo;s made great</p>
+          <h2 id="q-h">Unique by default. Reliably great by construction.</h2>
+          <p>Every explainer is its own thing &mdash; its own metaphor, palette and voice &mdash; but
+            none of them ship until they clear the same hard bar.</p>
+        </div>
+
+        <div class="qgrid">
+          <div class="qitem">
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
+            <div><h3>Genuinely responsive</h3><p>Designed mobile-first and verified on real pixels at 390&nbsp;px and 1440&nbsp;px &mdash; not assumed.</p></div>
+          </div>
+          <div class="qitem">
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
+            <div><h3>Grounded in real source</h3><p>Every claim is traceable to the repo&rsquo;s actual code via a real vector knowledge base. No invented features.</p></div>
+          </div>
+          <div class="qitem">
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
+            <div><h3>Real diagrams, not decoration</h3><p>Each page carries a true architecture diagram <em>and</em> a data-flow diagram, drawn from the repo&rsquo;s real structure.</p></div>
+          </div>
+          <div class="qitem">
+            <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>
+            <div><h3>Accessible &amp; semantic</h3><p>Landmarks, keyboard focus, alt text and AA contrast are built into the shared system every page composes onto.</p></div>
+          </div>
+        </div>
+
+        <div class="thebar">
+          <div class="score">95<small>min on both devices</small></div>
+          <div class="bar-copy">
+            <p>Before it ships, a vision model scores each page on two rubrics &mdash;
+              <strong>&ldquo;do they get it?&rdquo;</strong> (substance) and
+              <strong>&ldquo;did someone who gives a shit make this?&rdquo;</strong> (craft) &mdash;
+              on mobile <em>and</em> desktop. Nothing ships until every line clears the bar.
+              The real test: a developer looks at it and smiles.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== EXAMPLES ===================== -->
+    <section class="band examples" id="examples" aria-labelledby="ex-h">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow"><span class="dot" aria-hidden="true"></span> Examples</p>
+          <h2 id="ex-h">See the range.</h2>
+          <p>Five real repos, five completely different explainers &mdash; same engine, same quality bar.</p>
+        </div>
+
+        <div class="gallery">
+          <a class="ex-card" href="https://ruvn-explainer.vercel.app/" target="_blank" rel="noopener">
+            <span class="ex-swatch" aria-hidden="true"><svg viewBox="0 0 320 88" preserveAspectRatio="none"><rect width="320" height="88" fill="#0f1410"/><rect width="320" height="88" fill="url(#sw-ruvn)"/><defs><linearGradient id="sw-ruvn" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#9e2b25" stop-opacity="0.55"/><stop offset="100%" stop-color="#3f6b3a" stop-opacity="0.5"/></linearGradient></defs><g fill="#f4ecdc" opacity="0.85"><rect x="22" y="30" width="60" height="28" rx="4" transform="rotate(-8 52 44)" fill="none" stroke="#3f6b3a" stroke-width="3"/></g></svg></span>
+            <div class="ex-body">
+              <span class="ex-name">ruvn <span class="src">ruvnet/ruvn</span></span>
+              <p class="ex-pitch">Graded, cited research instead of a confident guess &mdash; an AI assistant that grades every source A&ndash;D and hands you a dossier where every claim has a receipt.</p>
+              <span class="ex-link">View explainer <span class="arr" aria-hidden="true">&rarr;</span></span>
+            </div>
+          </a>
+
+          <a class="ex-card" href="#examples" rel="noopener">
+            <span class="ex-swatch" aria-hidden="true"><svg viewBox="0 0 320 88" preserveAspectRatio="none"><rect width="320" height="88" fill="#0b0716"/><defs><radialGradient id="sw-ruqu" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="#7b5cff" stop-opacity="0.8"/><stop offset="100%" stop-color="#7b5cff" stop-opacity="0"/></radialGradient></defs><rect width="320" height="88" fill="url(#sw-ruqu)"/><circle cx="160" cy="44" r="26" fill="none" stroke="#c7b6ff" stroke-width="2"/><ellipse cx="160" cy="44" rx="26" ry="9" fill="none" stroke="#9b86ff" stroke-width="1.6"/><circle cx="160" cy="44" r="3.5" fill="#fff"/></svg></span>
+            <div class="ex-body">
+              <span class="ex-name">ruqu <span class="src">ruvnet/ruqu</span></span>
+              <p class="ex-pitch">A pretend quantum computer that runs on your laptop &mdash; a faithful simulator in pure Rust and WebAssembly, in your browser or one npx command.</p>
+              <span class="ex-link">View explainer <span class="arr" aria-hidden="true">&rarr;</span></span>
+            </div>
+          </a>
+
+          <a class="ex-card" href="#examples" rel="noopener">
+            <span class="ex-swatch" aria-hidden="true"><svg viewBox="0 0 320 88" preserveAspectRatio="none"><rect width="320" height="88" fill="#08080d"/><path d="M150 22 L182 62 L118 62 Z" fill="none" stroke="#9aa0c8" stroke-width="2"/><g stroke-width="2.4" stroke-linecap="round"><line x1="172" y1="46" x2="232" y2="30" stroke="#a06bff"/><line x1="174" y1="50" x2="232" y2="50" stroke="#1fd6d6"/><line x1="174" y1="54" x2="232" y2="70" stroke="#ff5e62"/></g></svg></span>
+            <div class="ex-body">
+              <span class="ex-name">PhotonLayer <span class="src">ruvnet/PhotonLayer</span></span>
+              <p class="ex-pitch">The lens that captures the answer, not the picture &mdash; a learned piece of smart glass reshapes light so a tiny sensor measures a few numbers, with a signed receipt.</p>
+              <span class="ex-link">View explainer <span class="arr" aria-hidden="true">&rarr;</span></span>
+            </div>
+          </a>
+
+          <a class="ex-card" href="#examples" rel="noopener">
+            <span class="ex-swatch" aria-hidden="true"><svg viewBox="0 0 320 88" preserveAspectRatio="none"><rect width="320" height="88" fill="#160d06"/><defs><linearGradient id="sw-mh" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ffb547"/><stop offset="100%" stop-color="#ff6f3c"/></linearGradient></defs><circle cx="160" cy="44" r="24" fill="url(#sw-mh)" opacity="0.9"/><text x="160" y="52" text-anchor="middle" font-family="'Space Grotesk',sans-serif" font-weight="700" font-size="22" fill="#160d06">MH</text></svg></span>
+            <div class="ex-body">
+              <span class="ex-name">MetaHarness <span class="src">ruvnet/agent-harness-generator</span></span>
+              <p class="ex-pitch">Mint a custom agent harness from any repo &mdash; a factory for agent frameworks, where the harness itself is the product.</p>
+              <span class="ex-link">View explainer <span class="arr" aria-hidden="true">&rarr;</span></span>
+            </div>
+          </a>
+
+          <a class="ex-card" href="#examples" rel="noopener">
+            <span class="ex-swatch" aria-hidden="true"><svg viewBox="0 0 320 88" preserveAspectRatio="none"><rect width="320" height="88" fill="#06120f"/><defs><linearGradient id="sw-qe" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#34d6c6" stop-opacity="0.7"/><stop offset="100%" stop-color="#2bbf7a" stop-opacity="0.6"/></linearGradient></defs><rect width="320" height="88" fill="url(#sw-qe)"/><g fill="none" stroke="#eafff7" stroke-width="2"><circle cx="130" cy="44" r="9"/><circle cx="160" cy="30" r="9"/><circle cx="190" cy="44" r="9"/><circle cx="160" cy="58" r="9"/><path d="M138 40 152 34M168 34 182 40M182 48 168 54M152 54 138 48"/></g></svg></span>
+            <div class="ex-body">
+              <span class="ex-name">Agentic QE <span class="src">agentic-qe</span></span>
+              <p class="ex-pitch">AI-powered quality engineering &mdash; a fleet of 60 agents and 75 skills across 11 platforms, free and open source.</p>
+              <span class="ex-link">View explainer <span class="arr" aria-hidden="true">&rarr;</span></span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FINAL CTA ===================== -->
+    <section class="band" aria-labelledby="fcta-h">
+      <div class="wrap">
+        <div class="final-cta">
+          <h2 id="fcta-h">Give your repo the front door it deserves.</h2>
+          <p>One command turns it into a page people actually read &mdash; and an AI pack their assistants understand.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#get-started">Get started <span class="arr" aria-hidden="true">&rarr;</span></a>
+            <a class="btn btn-ghost" href="#examples">Browse examples</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="site-foot" role="contentinfo">
+    <div class="wrap">
+      <div class="foot-inner">
+        <span class="foot-brand">
+          <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <rect width="32" height="32" rx="8" fill="#0c0d14"/>
+            <circle cx="16" cy="16" r="9.5" fill="none" stroke="url(#brand-spec)" stroke-width="2.4"/>
+            <path d="M13.4 11.6 L21 16 L13.4 20.4 Z" fill="#eff1fc"/>
+          </svg>
+          Repo Explainer
+        </span>
+        <p class="foot-credit">
+          Built by <strong>Stuart Kerr</strong> at
+          <a href="https://isovision.ai" rel="author">ISOvision.ai</a>.
+        </p>
+      </div>
+      <div class="foot-fine">
+        <span>&copy; 2026 ISOvision.ai &middot; Repo Explainer</span>
+        <span>From &ldquo;never seen this&rdquo; to &ldquo;I want to use it.&rdquo;</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Copy-to-clipboard for the get-started command wells.
+    (function () {
+      var status = document.getElementById('copy-status');
+      function flash(btn, ok) {
+        var label = btn.querySelector('.copy-label');
+        var original = label ? label.textContent : '';
+        btn.classList.add('copied');
+        if (label) label.textContent = ok ? 'Copied' : 'Press ⌘C';
+        if (status) status.textContent = ok ? 'Copied to clipboard.' : 'Copy failed — select and press Cmd/Ctrl+C.';
+        window.setTimeout(function () {
+          btn.classList.remove('copied');
+          if (label) label.textContent = original || 'Copy';
+        }, 1700);
+      }
+      document.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var text = btn.getAttribute('data-copy') || '';
+          // decode the &lt; / &gt; entities stored in the attribute
+          var ta = document.createElement('textarea');
+          ta.innerHTML = text;
+          text = ta.value;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () { flash(btn, true); },
+              function () { flash(btn, false); });
+          } else {
+            flash(btn, false);
+          }
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
