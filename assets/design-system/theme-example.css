@@ -1,0 +1,83 @@
+/* ============================================================================
+   THEME OVERRIDE — example: "PhotonLayer / Prism"
+   ----------------------------------------------------------------------------
+   This is the ENTIRE per-repo art direction. Load it AFTER design-system.css:
+
+     <link rel="stylesheet" href="design-system.css" />
+     <link rel="stylesheet" href="theme.css" />          (this file)
+
+   It overrides ~14 EXPRESSION knobs and NOTHING in the skeleton. Every layout,
+   breakpoint, spacing rhythm, and accessibility behaviour is inherited
+   unchanged — only the look changes. Swap this block to re-skin any explainer.
+
+   The metaphor here: a near-black optical bench with a full visible-light
+   spectrum as the signature gradient (lenses, rays, prisms). Distinct from the
+   neutral default and from every sibling explainer.
+   ============================================================================ */
+
+/* Type personality: geometric-modern (Space Grotesk + Inter + JetBrains Mono).
+   Load the fonts in <head>; the skeleton already references these var names. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  color-scheme: dark;
+
+  /* --- Substrate: true optical-bench black with a faint blue cast --- */
+  --bg:        #08080d;
+  --bg-2:      #0c0c14;
+  --surface:   #11111c;
+  --surface-2: #161624;
+  --ridge:     #262640;
+
+  /* --- Ink: cool off-white (never warm) --- */
+  --ink:       #eef0fb;
+  --ink-2:     #c3c6dd;
+  --muted:     #8b8fab;
+  --faint:     #5a5e7a;
+  --on-accent: #08080d;
+
+  /* --- Accents drawn from the spectrum --- */
+  --accent:    #1fd6d6;   /* cyan      — links, primary */
+  --accent-2:  #3ee68a;   /* green     — hover, secondary */
+  --accent-3:  #a06bff;   /* violet    — micro-labels */
+
+  /* --- The signature gradient: the FULL prism, not a single hue --- */
+  --spectrum: linear-gradient(90deg,
+                #a06bff 0%, #6b7bff 16%, #4f8cff 30%, #1fd6d6 46%,
+                #3ee68a 60%, #ffd23e 74%, #ff9a3e 86%, #ff5e62 100%);
+
+  /* --- Type personality knobs (geometric-modern, not industrial caps) --- */
+  --display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --sans:    "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --display-weight: 700;
+  --display-case:   none;
+  --display-tracking: -0.02em;
+
+  /* --- Shape: a touch crisper than default --- */
+  --radius:   16px;
+  --radius-s: 10px;
+}
+
+/* ----------------------------------------------------------------------------
+   OPTIONAL: a single motif flourish is the only place a theme may add (not
+   override) a rule — kept tiny and self-contained. Here, the prismatic edge
+   under the sticky header. Skeleton classes are never touched.
+   ---------------------------------------------------------------------------- */
+.site-head { border-bottom: 0; box-shadow: 0 1px 0 0 var(--line); }
+.site-head::after { content: ""; display: block; height: 2px; background: var(--spectrum); opacity: 0.9; }
+
+/* ----------------------------------------------------------------------------
+   For reference — a LIGHT identity (e.g. ruvn's "warm dossier") is the SAME
+   technique: flip color-scheme + invert the substrate/ink roles. Example:
+
+   :root {
+     color-scheme: light;
+     --bg:#f4ecdc; --bg-2:#efe5d2; --surface:#fbf6ea; --surface-2:#f0e7d4; --ridge:#d8c9a8;
+     --ink:#3a2f25; --ink-2:#5a4a39; --muted:#84715a; --faint:#a8966f; --on-accent:#fbf6ea;
+     --accent:#9e2b25; --accent-2:#3f6b3a; --accent-3:#b07d35;
+     --spectrum:linear-gradient(96deg,#9e2b25,#3f6b3a);
+     --display:"Spectral",Georgia,serif; --sans:"Source Sans 3",system-ui,sans-serif;
+     --mono:"Spline Sans Mono",ui-monospace,monospace;
+   }
+   ---------------------------------------------------------------------------- */
