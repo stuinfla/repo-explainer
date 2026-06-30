@@ -238,12 +238,15 @@ em { color: var(--ink); font-style: italic; }
 /* A prismatic / signal hairline motif (optional divider). */
 .spec-line { height: 2px; width: 100%; border: 0; border-radius: 2px; background: var(--spectrum); opacity: 0.9; }
 
-/* Inline command / code chip. */
+/* Inline command / code chip. `overflow-wrap: anywhere` lets a long unbreakable token (e.g.
+   `console.log(chalk.blue('Hello`) wrap instead of forcing its container wider than a 390px
+   phone — which otherwise overflows the section and clips the right edge of every line. */
 code, .cmd {
   font-family: var(--mono); font-size: 0.86em; color: var(--accent-2);
   background: var(--fill-2);
   border: 1px solid var(--line-strong); border-radius: 6px;
   padding: 0.1em 0.45em;
+  overflow-wrap: anywhere;
 }
 
 /* Multi-line command / code well. */
@@ -546,6 +549,7 @@ section { scroll-margin-top: calc(var(--head-h) + 1rem); }
   counter-increment: step; position: relative;
   padding: 14px 16px 14px 58px;
   background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-s);
+  min-width: 0;   /* grid items default to min-content width; allow the cell to shrink + wrap its code chips */
 }
 .steps li::before {
   content: counter(step); position: absolute; left: 14px; top: 13px;
