@@ -1,7 +1,6 @@
 {
   "name": "@isovision/explainmyrepo",
   "version": "0.1.0",
-  "private": true,
   "description": "Turn any GitHub repo into a bespoke, art-directed explainer site — for humans and their AI — in one command.",
   "type": "module",
   "bin": {
@@ -11,11 +10,35 @@
     "bin/",
     "src/",
     "tools/",
-    "kb/",
+    "kb/*.mjs",
+    "kb/CONTRACT.md",
     "assets/"
   ],
+  "keywords": [
+    "explainer",
+    "documentation",
+    "github",
+    "repo",
+    "ai",
+    "knowledge-base",
+    "static-site",
+    "npx"
+  ],
+  "homepage": "https://github.com/stuinfla/Repo-Explainer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stuinfla/Repo-Explainer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stuinfla/Repo-Explainer/issues"
+  },
+  "author": "ISOvision",
+  "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
