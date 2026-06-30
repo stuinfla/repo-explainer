@@ -182,17 +182,17 @@ const ADAPTERS = { netlify: deployNetlify, vercel: deployVercel, 'vercel-cli': d
 // a VALID Netlify token → Vercel token → logged-in Vercel CLI. A stale Netlify token (present but
 // expired) must not shadow a working CLI, so we verify it instead of trusting its presence.
 async function resolveProvider() {
+  // Netlify is the ONLY automatic target — each explainer gets its own {slug}-explainer.netlify.app site.
+  // We DELIBERATELY never auto-fall-back to a personal Vercel account: doing that once deployed a demo
+  // into a shared "site" project and overwrote an unrelated LIVE site (warrior-nation, 2026-06-30). Vercel
+  // is now opt-in ONLY via an explicit DEPLOY_PROVIDER=vercel|vercel-cli. With no override we return
+  // 'netlify' and FAIL LOUD if its token is missing/invalid, so the owner refreshes it — never a guess.
   if (process.env.DEPLOY_PROVIDER) return process.env.DEPLOY_PROVIDER.toLowerCase();
   if (process.env.NETLIFY_AUTH_TOKEN) {
-    try {
-      const r = await fetch('https://api.netlify.com/api/v1/user', { headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN}` } });
-      if (r.ok) return 'netlify';
-      console.error(`[deploy] NETLIFY_AUTH_TOKEN present but not valid (HTTP ${r.status}) — falling back`);
-    } catch { /* network issue — fall through to the next option */ }
+    const r = await fetch('https://api.netlify.com/api/v1/user', { headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN}` } }).catch(() => null);
+    if (!r || !r.ok) throw new Error(`NETLIFY_AUTH_TOKEN is set but not valid (HTTP ${r ? r.status : 'network error'}). Refresh it: create a token at https://app.netlify.com/user/applications#personal-access-tokens and put NETLIFY_AUTH_TOKEN=… in .env. (Vercel is NOT used as a fallback by design.)`);
   }
-  if (process.env.VERCEL_TOKEN) return 'vercel';
-  try { execFileSync('vercel', ['whoami'], { stdio: ['ignore', 'ignore', 'ignore'] }); return 'vercel-cli'; }
-  catch { return 'netlify'; /* nothing usable — fail loud later with the netlify-token message */ }
+  return 'netlify';
 }
 
 async function main() {
