@@ -111,87 +111,22 @@ async function deployNetlify({ pageDir, slug }) {
   return { liveUrl: site.ssl_url || `https://${name}.netlify.app`, provider: 'netlify' };
 }
 
-// ---- adapter: Vercel (swappable — DEPLOY_PROVIDER=vercel) ----
-async function deployVercel({ pageDir, slug }) {
-  const token = process.env.VERCEL_TOKEN;
-  if (!token) throw new Error('VERCEL_TOKEN not set in environment (deploy-provider token required)');
-  const auth = { Authorization: `Bearer ${token}` };
-  const name = `${sanitize(slug)}-explainer`;
-  const teamQ = process.env.VERCEL_TEAM_ID ? `?teamId=${process.env.VERCEL_TEAM_ID}` : '';
+// ---- Vercel adapters DELETED 2026-06-30 (at the owner's instruction) ----
+// A Vercel auto-fallback once deployed a demo into a shared personal-Vercel "site" project and overwrote
+// an unrelated LIVE site (warrior-nation). ALL Vercel deploy code (REST adapter + CLI adapter) was removed.
+// Deploys go to NETLIFY ONLY — each explainer to its OWN {slug}-explainer.netlify.app site. Do NOT
+// reintroduce Vercel or any silent provider fallback; if another provider is ever truly needed, add a
+// new, ISOLATED, opt-in adapter deliberately and review it for the shared-target failure mode.
+const ADAPTERS = { netlify: deployNetlify };
 
-  const files = collectFiles(pageDir).map(({ rel, abs }) => ({ file: rel, data: fs.readFileSync(abs).toString('base64'), encoding: 'base64' }));
-  if (!files.length) throw new Error(`no files to deploy under ${pageDir}`);
-  const dep = await api(`https://api.vercel.com/v13/deployments${teamQ}`,
-    { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, files, target: 'production', projectSettings: { framework: null } }) },
-    'vercel deploy');
-  const depId = dep.id || dep.uid;
-  let ready = dep;
-  for (let i = 0; i < 80; i++) {
-    const state = ready.readyState || ready.status;
-    if (state === 'READY') break;
-    if (state === 'ERROR' || state === 'CANCELED') throw new Error(`vercel deploy ${String(state).toLowerCase()}`);
-    if (i === 79) throw new Error('vercel deploy did not reach READY within timeout');
-    await sleep(3000);
-    ready = await api(`https://api.vercel.com/v13/deployments/${depId}${teamQ}`, { headers: auth }, 'vercel deploy status');
-  }
-  const host = ready.url || dep.url;
-  if (!host) throw new Error('vercel deploy returned no url');
-  return { liveUrl: `https://${host}`, provider: 'vercel' };
-}
-
-// ---- adapter: Vercel via the logged-in CLI (DEPLOY_PROVIDER=vercel-cli) ----
-// No token needed when `vercel login` has run. Deploys the static page dir to production and aliases it
-// to a clean {slug}-explainer.vercel.app host. This is what makes autonomous shipping work when only an
-// interactive CLI session is available (no NETLIFY_AUTH_TOKEN / VERCEL_TOKEN in the environment).
-async function deployVercelCli({ pageDir, slug }) {
-  const name = `${sanitize(slug)}-explainer`;
-  // CRITICAL ISOLATION: deploy from a temp dir NAMED after the dedicated project, with no inherited
-  // `.vercel` link. Vercel infers the project from the cwd directory name, so deploying straight from a
-  // build dir literally named "site" auto-links to a pre-existing shared "site" project and OVERWRITES
-  // its production — which clobbered an unrelated live site (warrior-nation, 2026-06-30). Staging under
-  // `${slug}-explainer/` guarantees a UNIQUE dedicated project per repo and never touches anything else.
-  const stage = path.join(os.tmpdir(), 'explainmyrepo-deploy', name);
-  fs.rmSync(stage, { recursive: true, force: true });
-  fs.mkdirSync(stage, { recursive: true });
-  fs.cpSync(pageDir, stage, { recursive: true });
-  fs.rmSync(path.join(stage, '.vercel'), { recursive: true, force: true });
-  let out;
-  try {
-    out = execFileSync('vercel', ['deploy', '--prod', '--yes'], { cwd: stage, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  } catch (e) {
-    const msg = String(e.stderr || e.stdout || e.message || '');
-    if (/not authenticated|log ?in|credentials|no existing credentials/i.test(msg)) {
-      throw new Error('vercel CLI is not logged in — run `vercel login`, or set DEPLOY_PROVIDER=vercel with VERCEL_TOKEN');
-    }
-    throw new Error(`vercel CLI deploy failed: ${msg.split('\n').filter(Boolean).slice(-3).join(' ').slice(0, 220)}`);
-  } finally {
-    fs.rmSync(stage, { recursive: true, force: true });
-  }
-  const url = (out.match(/https:\/\/[a-z0-9-]+\.vercel\.app/i) || [])[0];
-  if (!url) throw new Error('vercel CLI deploy returned no URL');
-  let liveUrl = url;
-  try { execFileSync('vercel', ['alias', 'set', url, `${name}.vercel.app`], { stdio: ['ignore', 'ignore', 'ignore'] }); liveUrl = `https://${name}.vercel.app`; }
-  catch { /* alias is best-effort (subdomain may be taken by another team) — keep the deployment URL */ }
-  return { liveUrl, provider: 'vercel-cli' };
-}
-
-const ADAPTERS = { netlify: deployNetlify, vercel: deployVercel, 'vercel-cli': deployVercelCli };
-
-// Pick the provider that can actually authenticate right now, unless DEPLOY_PROVIDER forces one:
-// a VALID Netlify token → Vercel token → logged-in Vercel CLI. A stale Netlify token (present but
-// expired) must not shadow a working CLI, so we verify it instead of trusting its presence.
+// Netlify is the ONLY target. If its token is missing or invalid we FAIL LOUD with exactly how to refresh
+// it — never a guess, never a different provider, never another account.
 async function resolveProvider() {
-  // Netlify is the ONLY automatic target — each explainer gets its own {slug}-explainer.netlify.app site.
-  // We DELIBERATELY never auto-fall-back to a personal Vercel account: doing that once deployed a demo
-  // into a shared "site" project and overwrote an unrelated LIVE site (warrior-nation, 2026-06-30). Vercel
-  // is now opt-in ONLY via an explicit DEPLOY_PROVIDER=vercel|vercel-cli. With no override we return
-  // 'netlify' and FAIL LOUD if its token is missing/invalid, so the owner refreshes it — never a guess.
-  if (process.env.DEPLOY_PROVIDER) return process.env.DEPLOY_PROVIDER.toLowerCase();
-  if (process.env.NETLIFY_AUTH_TOKEN) {
-    const r = await fetch('https://api.netlify.com/api/v1/user', { headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN}` } }).catch(() => null);
-    if (!r || !r.ok) throw new Error(`NETLIFY_AUTH_TOKEN is set but not valid (HTTP ${r ? r.status : 'network error'}). Refresh it: create a token at https://app.netlify.com/user/applications#personal-access-tokens and put NETLIFY_AUTH_TOKEN=… in .env. (Vercel is NOT used as a fallback by design.)`);
+  if (!process.env.NETLIFY_AUTH_TOKEN) {
+    throw new Error('NETLIFY_AUTH_TOKEN is not set. Create a Netlify personal access token at https://app.netlify.com/user/applications#personal-access-tokens and put NETLIFY_AUTH_TOKEN=… in .env, then retry. Deploys go to Netlify only.');
   }
+  const r = await fetch('https://api.netlify.com/api/v1/user', { headers: { Authorization: `Bearer ${process.env.NETLIFY_AUTH_TOKEN}` } }).catch(() => null);
+  if (!r || !r.ok) throw new Error(`NETLIFY_AUTH_TOKEN is set but not valid (HTTP ${r ? r.status : 'network error'}). Refresh it at https://app.netlify.com/user/applications#personal-access-tokens and update NETLIFY_AUTH_TOKEN in .env. Deploys go to Netlify only — no fallback.`);
   return 'netlify';
 }
 
