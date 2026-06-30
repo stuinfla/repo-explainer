@@ -169,13 +169,13 @@ function preflight(list, env) {
       how: 'add OPENAI_API_KEY=sk-… to .env — create one at https://platform.openai.com/api-keys' });
   }
   if (ids.has('deploy')) {
-    const provider = String(env.DEPLOY_PROVIDER || 'vercel').toLowerCase();
-    if (provider === 'netlify' && !has(['NETLIFY_AUTH_TOKEN'])) {
-      problems.push({ fatal: true, need: 'NETLIFY_AUTH_TOKEN', why: 'the deploy station publishes to Netlify',
-        how: 'add NETLIFY_AUTH_TOKEN=… to .env, or re-run with --no-deploy to build locally only' });
-    } else if (provider !== 'netlify' && !has(['VERCEL_TOKEN'])) {
-      problems.push({ fatal: false, need: 'VERCEL_TOKEN', why: 'the deploy station publishes to Vercel',
-        how: 'run `vercel login` (CLI auth also works), or add VERCEL_TOKEN=… to .env, or re-run with --no-deploy' });
+    // Deploy goes to NETLIFY ONLY now — each explainer to its own {slug}-explainer.netlify.app site.
+    // (Vercel was removed after it overwrote a live site; the legacy Vercel explainers are untouched and
+    // not managed by this pipeline.) A missing Netlify token is FATAL: we refuse to start a deploy run
+    // rather than guess a target or fall back to another account.
+    if (!has(['NETLIFY_AUTH_TOKEN'])) {
+      problems.push({ fatal: true, need: 'NETLIFY_AUTH_TOKEN', why: 'the deploy station publishes each explainer to its own {slug}-explainer.netlify.app site',
+        how: 'create a token at https://app.netlify.com/user/applications#personal-access-tokens and add NETLIFY_AUTH_TOKEN=… to .env, or re-run with --no-deploy to build locally only' });
     }
   }
   if ((ids.has('publish-repo') || ids.has('repo-seo')) && !has(['GITHUB_TOKEN', 'GH_TOKEN'])) {
