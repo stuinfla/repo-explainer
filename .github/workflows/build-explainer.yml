@@ -56,6 +56,9 @@ jobs:
         run: |
           npm ci || npm install
           npx playwright install --with-deps chromium
+          # make-favicon / make-social-card need ImageMagick (`convert`/`magick`), not preinstalled
+          # on every runner image. Fonts help text render in generated imagery.
+          sudo apt-get update && sudo apt-get install -y imagemagick fonts-liberation fonts-dejavu-core
 
       - name: Build, deploy, and report status
         env:
