@@ -65,46 +65,68 @@
     });
   });
 
-  // ---- feedback form (Netlify Forms, AJAX submit — no page navigation) -----
-  var fb = document.querySelector('form[data-fb]');
-  if (fb) {
-    var fbStatus = fb.querySelector('[data-fb-status]');
-    var fbThanks = document.querySelector('[data-fb-thanks]');
-    function fbSet(msg, isErr) {
-      if (!fbStatus) return;
-      fbStatus.textContent = msg || '';
-      fbStatus.classList.toggle('err', !!isErr);
+  // ---- Netlify Forms (AJAX submit — no page navigation) --------------------
+  // One handler for every form on the page: validate, POST url-encoded to '/'
+  // (incl. form-name, as Netlify requires), then swap the form for its thanks
+  // block. `validate` returns an error string to block, or '' to proceed;
+  // native `required`/type constraints are enforced via reportValidity().
+  function wireForm(form, statusEl, thanksEl, validate) {
+    if (!form) return;
+    function setStatus(msg, isErr) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('err', !!isErr);
     }
-    fb.addEventListener('submit', function (e) {
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var data = new FormData(fb);
-      // Require at least a grade or a line of words — don't ship empty noise.
-      var clarity = data.get('clarity');
-      var thoughts = (data.get('thoughts') || '').toString().trim();
-      if (!clarity && !thoughts) {
-        fbSet('Add a grade or a line of feedback first.', true);
-        return;
-      }
-      var btn = fb.querySelector('button[type="submit"]');
+      var problem = validate ? validate(form) : '';
+      if (problem) { setStatus(problem, true); return; }
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+
+      var btn = form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
-      fbSet('Sending…', false);
+      setStatus('Sending…', false);
 
-      // Netlify Forms expects url-encoded POST to the page path, incl. form-name.
       var body = [];
-      data.forEach(function (v, k) { body.push(encodeURIComponent(k) + '=' + encodeURIComponent(v)); });
-
+      new FormData(form).forEach(function (v, k) {
+        body.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+      });
       fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.join('&')
       }).then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        fb.hidden = true;
-        if (fbThanks) fbThanks.hidden = false;
+        form.hidden = true;
+        if (thanksEl) thanksEl.hidden = false;
       }).catch(function () {
         if (btn) btn.disabled = false;
-        fbSet('Couldn’t send just then — please try again.', true);
+        setStatus('Couldn’t send just then — please try again.', true);
       });
     });
   }
+
+  // Feedback: needs at least a grade or a line of words — no empty noise.
+  var fbForm = document.querySelector('form[data-fb]');
+  wireForm(
+    fbForm,
+    fbForm && fbForm.querySelector('[data-fb-status]'),
+    document.querySelector('[data-fb-thanks]'),
+    function (f) {
+      var d = new FormData(f);
+      if (!d.get('clarity') && !(d.get('thoughts') || '').toString().trim()) {
+        return 'Add a grade or a line of feedback first.';
+      }
+      return '';
+    }
+  );
+
+  // Request an explainer: native required (repo URL + email) is enough.
+  var rqForm = document.querySelector('form[data-rq]');
+  wireForm(
+    rqForm,
+    rqForm && rqForm.querySelector('[data-rq-status]'),
+    document.querySelector('[data-rq-thanks]'),
+    null
+  );
 })();

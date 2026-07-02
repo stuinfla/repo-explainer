@@ -625,6 +625,49 @@
           </aside>
         </div>
 
+        <div class="gs-request reveal-up" data-d="4" id="request">
+          <div class="rq-head">
+            <span class="door-tag hosted">managed &middot; early access</span>
+            <h3>Or &mdash; don&rsquo;t lift a finger. I&rsquo;ll build it for you.</h3>
+            <p>No keys, no install, no terminal. Drop your repo and email &mdash; I build the
+              explainer myself, run it through the same quality gate, and send you the live link,
+              the repo, and the AI pack. Free while it&rsquo;s in early access.</p>
+          </div>
+
+          <form class="rq-form" name="explainer-request" method="POST"
+                data-netlify="true" netlify-honeypot="bot-field" data-rq>
+            <input type="hidden" name="form-name" value="explainer-request" />
+            <input type="hidden" name="source" value="landing" />
+            <p class="fb-hp" hidden aria-hidden="true">
+              <label>Leave this empty: <input name="bot-field" tabindex="-1" autocomplete="off" /></label>
+            </p>
+            <div class="rq-fields">
+              <label class="fb-field">
+                <span class="fb-flabel">Your GitHub repo</span>
+                <input type="url" name="repo" required inputmode="url"
+                  placeholder="https://github.com/you/your-project" />
+              </label>
+              <label class="fb-field">
+                <span class="fb-flabel">Email <em>(so I can send you the link)</em></span>
+                <input type="email" name="email" required autocomplete="email" inputmode="email"
+                  placeholder="you@example.com" />
+              </label>
+            </div>
+            <div class="rq-actions">
+              <button class="btn btn-primary" type="submit">Build mine <span class="arr" aria-hidden="true">&rarr;</span></button>
+              <p class="fb-note" role="status" data-rq-status></p>
+            </div>
+          </form>
+
+          <div class="rq-thanks" data-rq-thanks hidden>
+            <span class="fb-check" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+            </span>
+            <h3>You&rsquo;re in the queue.</h3>
+            <p>I&rsquo;ll build your explainer by hand and email you the live link, the repo, and the AI pack.</p>
+          </div>
+        </div>
+
         <p class="honest-note reveal-up">
           <span class="hn-dot" aria-hidden="true"></span>
           <span><strong>Honest status:</strong> the engine is built and proven. The <code>npx</code> package
