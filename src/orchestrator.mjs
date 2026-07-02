@@ -395,19 +395,28 @@ export async function run(repoUrl, opts = {}) {
   }
 
   if (!(quality && quality.passed)) {
-    // NEVER ship a below-bar page silently — the whole point. Stop before deploy/publish, report the gap.
+    // Below the world-class bar. DEFAULT: hold — never ship slop (the whole point). With
+    // --ship-best-effort: deliver the best version anyway so a stranger ALWAYS gets a URL, with the
+    // honest scorecard travelling alongside — UNLESS it's genuinely broken (no device rendered the
+    // mandatory diagrams), which always holds.
     reportQualityGap(quality);
-    log(`\n${C.yellow}${C.bold}Held at the quality gate — did NOT deploy or publish a below-bar page.${C.reset}`);
-    log(`${C.dim}Best local build: ${outDir}/site . Lift the gaps above (or re-run with a higher --max-refine), then ship the remaining steps with: ${C.cyan}--from ${post[0] ? post[0].id : 'deploy'} --out ${outDir}${C.reset}`);
-    return { ok: false, gated: true, quality, outDir, results: preR.results };
-  }
-
-  const meanPair = quality.scorecard.map((c) => `${String(c.device).replace(/\(.*/, '')} ${c.meanScore}`).join(' / ');
-  if (quality.exemplary) {
-    log(`\n${C.green}${C.bold}Quality gate PASSED — world-class (mean ${meanPair}).${C.reset} Shipping.`);
+    const diagramsOk = !!(quality && Array.isArray(quality.scorecard) && quality.scorecard.some((c) => c.inv18?.passed));
+    if (!(opts.shipBestEffort && diagramsOk)) {
+      log(`\n${C.yellow}${C.bold}Held at the quality gate — did NOT deploy or publish a below-bar page.${C.reset}`);
+      log(`${C.dim}Best local build: ${outDir}/site . ${opts.shipBestEffort ? 'Held because the mandatory diagrams did not render — the one thing we will not ship broken. ' : ''}Lift the gaps above (or re-run with a higher --max-refine), then ship with: ${C.cyan}--from ${post[0] ? post[0].id : 'deploy'} --out ${outDir}${C.reset}`);
+      return { ok: false, gated: true, quality, outDir, results: preR.results };
+    }
+    const meanBE = quality.scorecard.map((c) => `${String(c.device).replace(/\(.*/, '')} ${c.meanScore}`).join(' / ');
+    log(`\n${C.yellow}${C.bold}Below the world-class bar (mean ${meanBE}) — shipping the best version (--ship-best-effort).${C.reset}`);
+    log(`${C.dim}Structurally sound (mandatory diagrams present). The per-axis gaps above are recorded in the scorecard and delivered honestly, not hidden. A stranger always gets a real page.${C.reset}`);
   } else {
-    log(`\n${C.green}${C.bold}Quality gate PASSED — ship-worthy (mean ${meanPair}).${C.reset} Shipping.`);
-    log(`${C.dim}Genuinely good + no slop + real legible diagrams (INV-18). The world-class target (mean ≥ 90 / worst axis ≥ 85 / all 5 operators) is not fully reached — the per-axis gap is recorded in build.json refineNotes and travels with the scorecard.${C.reset}`);
+    const meanPair = quality.scorecard.map((c) => `${String(c.device).replace(/\(.*/, '')} ${c.meanScore}`).join(' / ');
+    if (quality.exemplary) {
+      log(`\n${C.green}${C.bold}Quality gate PASSED — world-class (mean ${meanPair}).${C.reset} Shipping.`);
+    } else {
+      log(`\n${C.green}${C.bold}Quality gate PASSED — ship-worthy (mean ${meanPair}).${C.reset} Shipping.`);
+      log(`${C.dim}Genuinely good + no slop + real legible diagrams (INV-18). The world-class target (mean ≥ 90 / worst axis ≥ 85 / all 5 operators) is not fully reached — the per-axis gap is recorded in build.json refineNotes and travels with the scorecard.${C.reset}`);
+    }
   }
   const postR = post.length ? await runStations(post, baseArgs, total, qIdx + 1) : { ok: true, results: [] };
   finalSummary(outDir);

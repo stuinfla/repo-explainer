@@ -39,6 +39,9 @@ OPTIONS
   --no-quality           skip the local vision quality gate (faster dry iterations)
   --no-refine            grade once but don't auto-iterate the copy to lift weak axes
   --max-refine <n>       max content-refine passes when below the quality bar (default 2)
+  --ship-best-effort     always deploy the best version (with an honest scorecard) instead of
+                         holding when the world-class bar isn't reached — guarantees a URL.
+                         Only truly broken pages (missing/broken diagrams) still hold.
   --register-kb          OPT-IN: if the repo isn't a kb.config target, inject a generated
                          entry into kb/kb.config.mjs (the one step that edits the shared registry)
   --from <station>       resume: start at this station id (needs an existing --out build)
@@ -65,7 +68,7 @@ EXAMPLES
   npx explainmyrepo owner/cool-lib --from concept --out ./explainer-builds/cool-lib
 `;
 
-const BOOL_FLAGS = new Set(['--no-deploy', '--no-publish', '--no-notify', '--no-quality', '--no-refine', '--register-kb', '--dry-run', '-h', '--help', '-v', '--version']);
+const BOOL_FLAGS = new Set(['--no-deploy', '--no-publish', '--no-notify', '--no-quality', '--no-refine', '--ship-best-effort', '--register-kb', '--dry-run', '-h', '--help', '-v', '--version']);
 const VALUE_FLAGS = new Set(['--out', '--model', '--from', '--to', '--only', '--max-refine']);
 
 function parseArgs(argv) {
