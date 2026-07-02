@@ -1,5 +1,5 @@
 {
-  "name": "@isovision/explainmyrepo",
+  "name": "explainmyrepo",
   "version": "0.1.1",
   "description": "Turn any GitHub repo into a bespoke, art-directed explainer site — for humans and their AI — in one command.",
   "type": "module",

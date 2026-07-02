@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// bin/explainmyrepo.mjs — the `npx @isovision/explainmyrepo <github-url>` entry point.
+// bin/explainmyrepo.mjs — the `npx explainmyrepo <github-url>` entry point.
 //
 // Turns any GitHub repo into a bespoke, art-directed explainer site — for humans AND their AI — in
 // one command. It runs the deterministic pipeline tools (tools/*.mjs, per tools/CONTRACT.md) in
 // order and calls Claude in the loop to author the judgment slots (concept, content, the Station-4
 // image briefs + diagram ASCII, and the primer). See src/orchestrator.mjs for the station map.
 //
-// Usage:  npx @isovision/explainmyrepo <github-url> [flags]
+// Usage:  npx explainmyrepo <github-url> [flags]
 // Reads credentials from the environment / a gitignored .env (never printed): ANTHROPIC_API_KEY
 // (or CLAUDE_API_KEY), OPENAI_API_KEY (or OPEN_AI_KEY), NETLIFY_AUTH_TOKEN, plus GitHub via `gh`.
 
@@ -25,7 +25,7 @@ const HELP = `
 explainmyrepo — turn any GitHub repo into a bespoke explainer site (for humans + AI).
 
 USAGE
-  npx @isovision/explainmyrepo <github-url> [options]
+  npx explainmyrepo <github-url> [options]
 
 ARGUMENTS
   <github-url>            https://github.com/owner/name  (also git@… or bare owner/name)
@@ -60,9 +60,9 @@ ENV (from .env, never printed)
   SMTP_USER/SMTP_PASS/EMAIL_TO      (notify — optional; failure is non-blocking)
 
 EXAMPLES
-  npx @isovision/explainmyrepo https://github.com/owner/cool-lib
-  npx @isovision/explainmyrepo owner/cool-lib --no-deploy --no-publish
-  npx @isovision/explainmyrepo owner/cool-lib --from concept --out ./explainer-builds/cool-lib
+  npx explainmyrepo https://github.com/owner/cool-lib
+  npx explainmyrepo owner/cool-lib --no-deploy --no-publish
+  npx explainmyrepo owner/cool-lib --from concept --out ./explainer-builds/cool-lib
 `;
 
 const BOOL_FLAGS = new Set(['--no-deploy', '--no-publish', '--no-notify', '--no-quality', '--no-refine', '--register-kb', '--dry-run', '-h', '--help', '-v', '--version']);

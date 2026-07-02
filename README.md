@@ -109,7 +109,7 @@ The judgment lives in **one** place — a Claude Code skill. The same core is ex
 
 ```bash
 # Point it at any GitHub repo. Walk away. Get back a live page, a repo you own, and an AI pack.
-npx @isovision/explainmyrepo https://github.com/owner/repo
+npx explainmyrepo https://github.com/owner/repo
 ```
 
 **What you need:** Node 18+, a GitHub repo URL, and your own API keys (Anthropic for the authoring brain, OpenAI for `gpt-image-2` imagery).
