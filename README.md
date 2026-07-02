@@ -4,7 +4,13 @@
 
 ### Point it at any GitHub repo. Get back an explainer a stranger — and their AI — actually understands.
 
-**▶ See it live — the concept, the full process, and all six example explainers on one page: [explainmyrepo.isovision.ai](https://explainmyrepo.isovision.ai)**
+## 🌐 The website — there is only ONE
+
+# → **[explainmyrepo.isovision.ai](https://explainmyrepo.isovision.ai)** ←
+
+This is the live site: the concept, the full process, and all six example explainers on one page.
+
+> **Heads up:** the old `repo-explainer-website.vercel.app` was an earlier draft that told people to run a command (`npx repo-explainer`) that was never published. It now **redirects here**. If you ever land on anything other than **explainmyrepo.isovision.ai**, you're on the wrong (old) page.
 
 *Complex repos deserve clear introductions. This builds them, then refuses to ship until they're good.*
 
