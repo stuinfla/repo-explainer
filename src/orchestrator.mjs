@@ -85,14 +85,10 @@ async function kbRegisterStation({ buildDir, env, model, apiKey, opts }) {
   fs.writeFileSync(genPath, `// GENERATED kb.config target entry for "${slug}" — paste into kb/kb.config.mjs targets{}.\nexport default ${JSON.stringify({ [slug]: entry }, null, 2)};\n`);
   log(`${C.dim}wrote generated entry → ${path.relative(process.cwd(), genPath)}${C.reset}`);
 
-  if (!opts.registerKb) {
-    throw new Error(
-      `kb:register — "${slug}" must be a registered kb.config target before build-kb can index it.\n` +
-      `  • A generated entry was written to ${genPath}.\n` +
-      `  • Re-run with --register-kb to inject it into kb/kb.config.mjs automatically (the one step that edits the shared registry), or paste it in by hand.`,
-    );
-  }
-  // --register-kb (opt-in, CLEARLY the single step that mutates kb/kb.config.mjs) ----------------
+  // Auto-register (no flag needed) so ANY repo just works. Inject the AI-authored entry into THIS
+  // build's kb.config copy. In real use that copy is ephemeral — a fresh CI checkout on the hosted
+  // path, or the throwaway npx install locally — so this never mutates a shared/committed registry.
+  // (--register-kb is now a no-op alias, kept for backward compatibility.)
   let src = fs.readFileSync(cfgPath, 'utf8');
   const anchor = 'export const targets = {';
   const at = src.indexOf(anchor);
@@ -100,7 +96,7 @@ async function kbRegisterStation({ buildDir, env, model, apiKey, opts }) {
   const inject = `\n  ${JSON.stringify(slug)}: ${JSON.stringify(entry, null, 2).replace(/\n/g, '\n  ')},`;
   src = src.slice(0, at + anchor.length) + inject + src.slice(at + anchor.length);
   fs.writeFileSync(cfgPath, src);
-  log(`${C.yellow}injected "${slug}" into kb/kb.config.mjs (--register-kb).${C.reset}`);
+  log(`${C.yellow}auto-registered "${slug}" into this build's kb.config.${C.reset}`);
   const m2 = await importCfg();
   try { m2.getTarget(slug); } catch (e) { throw new Error(`kb:register — injection did not take: ${e.message}`); }
   return { ok: true, registered: true };
