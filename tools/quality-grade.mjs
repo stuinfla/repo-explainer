@@ -348,6 +348,27 @@ async function scrollToTop(page, loc, offset) {
 // capture the grading crops — viewport-segment section crops + dedicated element
 // crops of the two mandatory diagrams. Returns { domInv18, fullPagePath, crops[], pageHeight }.
 // ----------------------------------------------------------------------------
+// Ensure the Chromium browser binary exists. The `playwright` npm package installs fine, but the
+// actual ~150MB browser is downloaded separately — a fresh machine (or `npx explainmyrepo`) won't
+// have it. Install it once, automatically, so the quality gate "just works" for a stranger.
+async function ensureChromium(chromium) {
+  let exePath = null;
+  try { exePath = chromium.executablePath(); } catch { /* path unknown */ }
+  if (exePath && fs.existsSync(exePath)) return; // already installed (respects PLAYWRIGHT_BROWSERS_PATH)
+  console.error('[quality-grade] Chromium browser not found — installing it once (~150MB, one-time)…');
+  const { execFileSync } = await import('node:child_process');
+  const { createRequire } = await import('node:module');
+  const require2 = createRequire(import.meta.url);
+  // playwright's `exports` blocks require.resolve('playwright/cli.js'), so find the package root
+  // (package.json is exported) and reach cli.js — the file that backs the `playwright` bin — directly.
+  let pwRoot;
+  try { pwRoot = path.dirname(require2.resolve('playwright/package.json')); }
+  catch { pwRoot = path.dirname(require2.resolve('playwright')); }
+  const pwCli = path.join(pwRoot, 'cli.js');
+  execFileSync(process.execPath, [pwCli, 'install', 'chromium'], { stdio: 'inherit', env: process.env });
+  console.error('[quality-grade] Chromium installed.');
+}
+
 async function renderDevice(chromium, url, device, assetsDir) {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -660,6 +681,9 @@ async function main() {
   let chromium;
   try { ({ chromium } = await import('playwright')); }
   catch (e) { return emit(false, {}, `playwright is not installed (npm i -D playwright && npx playwright install chromium): ${e?.message || e}`); }
+  // Fresh machines have the package but not the browser binary — install it once, automatically.
+  try { await ensureChromium(chromium); }
+  catch (e) { return emit(false, {}, `could not auto-install the Chromium browser (try 'npx playwright install chromium' manually): ${e?.message || e}`); }
 
   const assetsDir = path.join(buildDir, 'assets');
   fs.mkdirSync(assetsDir, { recursive: true });
