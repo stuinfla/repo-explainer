@@ -99,8 +99,12 @@ jobs:
             echo "LIVE: $URL"
             echo "### Explainer ready → $URL" >> "$GITHUB_STEP_SUMMARY"
           else
-            ERR=$(tail -c 300 /tmp/build.log | tr '\n' ' ' | tr '"' "'")
-            patch_status 16 failed "The build couldn't finish." "" "It didn't complete. $ERR"
+            # SECURITY: never publish raw build-log tails to the (public) status gist — a log line
+            # could contain an API key. Curated, fixed message to the gist; real detail stays in the
+            # GitHub Actions run log (visible only to repo collaborators).
+            patch_status 16 failed "The build couldn't finish." "" "It didn't complete this time. Try another repo, or try again in a bit."
             echo "::error::build failed (rc=$RC, url=$URL)"
+            echo "---- build.log tail (Actions run log only — NOT published) ----"
+            tail -c 2000 /tmp/build.log || true
             exit 1
           fi
