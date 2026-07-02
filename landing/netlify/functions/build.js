@@ -64,8 +64,8 @@ exports.handler = async function (event) {
   if (event.httpMethod === "OPTIONS") return json(204, {});
   if (event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
 
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) return json(500, { error: "Server misconfigured: missing GITHUB_TOKEN." });
+  const token = process.env.EXPLAINER_GH_TOKEN || process.env.GITHUB_TOKEN;
+  if (!token) return json(500, { error: "Server misconfigured: missing EXPLAINER_GH_TOKEN." });
 
   let body = {};
   try { body = JSON.parse(event.body || "{}"); } catch { return json(400, { error: "Invalid JSON body." }); }
