@@ -35,8 +35,8 @@ const PRIMARY_MODEL = 'gpt-image-2';         // verified primary (ADR-0005 D7)
 const FALLBACK_MODEL = 'gpt-image-1';        // safety net only if the probe fails
 const VALID_SIZES = new Set(['1024x1024', '1024x1536', '1536x1024', 'auto']);
 const PROBE_TIMEOUT_MS = 30_000;
-const GEN_TIMEOUT_MS = 180_000;              // high-quality renders are slow
-const GEN_ATTEMPTS = 3;                       // retry transient aborts (concurrent renders can starve one request)
+const GEN_TIMEOUT_MS = 300_000;              // high-quality photoreal renders can take 60–90s+ when the endpoint is loaded; 180s was too tight and aborted mid-render
+const GEN_ATTEMPTS = 3;                       // retry transient upstream 502s / aborts
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 // ---- single-JSON-on-stdout result helpers (exit code is the source of truth) ----
@@ -201,8 +201,12 @@ async function main() {
   const assetsDir = path.join(absBuildDir, 'assets');
   fs.mkdirSync(assetsDir, { recursive: true });
 
-  // ---- generate every rung (in parallel); ANY failure is a loud stop (no partial slot merge) ----
-  const results = await Promise.allSettled(rungs.map(async (r, idx) => {
+  // ---- generate every rung SEQUENTIALLY; ANY failure is a loud stop (no partial slot merge) ----
+  // Sequential (not concurrent): the image endpoint 502s / stalls when several high-quality
+  // renders peak at once, so one request would starve and abort. One-at-a-time is slower but
+  // reliable. Failures are still collected across ALL rungs (not fail-fast), so the loud-stop
+  // below reports every missing image at once — same contract as the previous Promise.allSettled.
+  async function renderRung(r) {
     const label = `${r.kind}${r.kind === 'section' ? `(${r.id})` : ''}`;
     const fileName = `${safeName(r.kind === 'hero' ? 'hero' : r.id)}.png`;
     const filePath = path.join(assetsDir, fileName);
@@ -214,8 +218,6 @@ async function main() {
         return { rung: r, filePath, bytes: cached.length };
       }
     } catch { /* not cached — generate below */ }
-    // stagger so N concurrent high-quality renders don't all peak at once (a starved request hits the abort)
-    if (idx) await new Promise((res) => setTimeout(res, idx * 1500));
     let buf, lastErr;
     for (let attempt = 1; attempt <= GEN_ATTEMPTS; attempt++) {
       try { buf = await generateOne(engine, String(r.prompt) + colourSuffix, r.px, apiKey); break; }
@@ -231,7 +233,13 @@ async function main() {
     fs.writeFileSync(filePath, buf);
     console.error(`[generate-image] ${label}: ${buf.length} bytes -> ${filePath}`);
     return { rung: r, filePath, bytes: buf.length };
-  }));
+  }
+
+  const results = [];
+  for (const r of rungs) {
+    try { results.push({ status: 'fulfilled', value: await renderRung(r) }); }
+    catch (reason) { results.push({ status: 'rejected', reason }); }
+  }
 
   const failures = results.map((res, i) => (res.status === 'rejected' ? `${rungs[i].kind}${rungs[i].kind === 'section' ? `(${rungs[i].id})` : ''}: ${res.reason?.message || res.reason}` : null)).filter(Boolean);
   if (failures.length) return fail(`image generation failed for ${failures.length} rung(s): ${failures.join(' | ')}`);
