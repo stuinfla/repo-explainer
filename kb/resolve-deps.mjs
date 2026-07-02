@@ -25,10 +25,10 @@ const KB_DIR = path.dirname(__filename);
 // so it finds deps installed either in kb/node_modules or the project root node_modules.
 const localRequire = createRequire(__filename);
 
-// LAST-RESORT author paths (kept so Stuart's local box still works with zero install).
-const MAC_RVF_GLOBAL = '/Users/stuartkerr/.npm-global/lib/node_modules/@ruvector/rvf';
-const MAC_XENOVA = 'file:///Users/stuartkerr/Code/AppealArmor/node_modules/@xenova/transformers/src/transformers.js';
-const MAC_MODEL_CACHE = '/Users/stuartkerr/Code/PowerPlatePulse/scripts/models-cache';
+// @ruvector/rvf and @xenova/transformers are declared dependencies, so they resolve from
+// node_modules (step 1) on any machine after `npm install`. The env overrides remain for
+// non-standard layouts. (No machine-specific fallback paths — those don't belong in a
+// published package.)
 
 function existsModuleDir(p) {
   // p may be a package root dir OR a file path; treat presence as resolvable.
@@ -60,14 +60,9 @@ export function loadRvf() {
     }
   }
 
-  // 3. Mac npm-global (last resort)
-  if (existsModuleDir(MAC_RVF_GLOBAL)) {
-    return { mod: localRequire(MAC_RVF_GLOBAL), via: 'Mac npm-global (last resort)' };
-  }
-
   throw new Error(
-    "Cannot resolve '@ruvector/rvf'. Run `cd kb && npm i` (or `npm i @ruvector/rvf` at the "
-    + 'project root), or set RVF_MODULE_PATH to a node_modules dir that contains it.'
+    "Cannot resolve '@ruvector/rvf'. Run `npm i` (it is a declared dependency), "
+    + 'or set RVF_MODULE_PATH to a node_modules dir that contains it.'
   );
 }
 
@@ -96,16 +91,10 @@ export async function loadTransformers() {
     } catch { /* fall through */ }
   }
 
-  // 3. Mac AppealArmor build (last resort)
-  try {
-    const T = await import(MAC_XENOVA);
-    return { T, modelCache: chooseModelCache(), via: 'Mac AppealArmor build (last resort)' };
-  } catch {
-    throw new Error(
-      "Cannot resolve '@xenova/transformers'. Run `cd kb && npm i` (or `npm i @xenova/transformers` "
-      + 'at the project root), or set XENOVA_PATH to the transformers package dir / src/transformers.js.'
-    );
-  }
+  throw new Error(
+    "Cannot resolve '@xenova/transformers'. Run `npm i` (it is a declared dependency), "
+    + 'or set XENOVA_PATH to the transformers package dir / src/transformers.js.'
+  );
 }
 
 /**
@@ -119,7 +108,6 @@ export function chooseModelCache(modelName = 'Xenova/all-MiniLM-L6-v2') {
   if (process.env.KB_MODEL_CACHE) return process.env.KB_MODEL_CACHE;
   const kbLocal = path.join(KB_DIR, 'models-cache');
   if (fs.existsSync(path.join(kbLocal, modelName))) return kbLocal;
-  if (fs.existsSync(path.join(MAC_MODEL_CACHE, modelName))) return MAC_MODEL_CACHE;
   return kbLocal; // remote download lands here on first run
 }
 

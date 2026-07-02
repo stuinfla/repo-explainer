@@ -37,3 +37,6 @@ explainer-builds/
 *.wav
 *.webm
 .netlify/
+
+# npm pack tarballs
+*.tgz

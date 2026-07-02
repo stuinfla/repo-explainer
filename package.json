@@ -1,6 +1,6 @@
 {
   "name": "@isovision/explainmyrepo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn any GitHub repo into a bespoke, art-directed explainer site — for humans and their AI — in one command.",
   "type": "module",
   "bin": {
@@ -39,6 +39,11 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@ruvector/rvf": "^0.2.2",
+    "@xenova/transformers": "^2.17.2",
+    "playwright": "^1.61.1"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
