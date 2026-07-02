@@ -17,3 +17,9 @@
   # `git diff --quiet` exits 0 (→ Netlify cancels the build) when nothing in
   # those paths changed, and non-zero (→ build proceeds) when something did.
   ignore = "git diff --quiet HEAD^ HEAD -- . ../netlify.toml"
+
+# Serverless front door for the hosted "paste a URL → build on our keys" flow.
+# Path is relative to base (landing/netlify/functions). Reachable at /.netlify/functions/<name>.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

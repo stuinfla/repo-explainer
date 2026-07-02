@@ -583,97 +583,84 @@
       <div class="wrap">
         <div class="section-head reveal-up">
           <p class="kicker"><span class="kicker-dot" aria-hidden="true"></span> Get started</p>
-          <h2 id="gs-h">Point it at a repo. Walk away.</h2>
-          <p class="sub">Both doors run the identical engine, so the result is the same however you start it.</p>
+          <h2 id="gs-h">Two ways in. Same AI engine, same result.</h2>
+          <p class="sub">Let us build it for you on our keys &mdash; or run it yourself with your own. Either way you get the identical, quality-gated explainer.</p>
         </div>
 
-        <div class="gs-grid">
-          <div class="gs-doors">
-            <div class="cmd-card reveal-up" data-d="1">
-              <div class="cmd-card-top"><span class="door-tag">recommended</span><h3>npx — works for anyone</h3></div>
-              <p class="cmd-sub">Zero install. Runs anywhere Node does, using your own keys.</p>
-              <div class="cmd">
-                <span class="prompt" aria-hidden="true">$</span>
-                <code><span class="tok">npx explainmyrepo</span> <span class="arg">&lt;github-url&gt;</span></code>
-                <button class="copy-btn" type="button" data-copy="npx explainmyrepo &lt;github-url&gt;" aria-label="Copy: npx explainmyrepo &lt;github-url&gt;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
-                  <span class="copy-label">Copy</span>
-                </button>
+        <div class="gs-two">
+          <!-- OPTION 1 — the website (recommended, no keys) -->
+          <div class="gs-request reveal-up" data-d="1" id="request">
+            <div class="rq-head">
+              <span class="door-tag hosted">recommended &middot; no setup</span>
+              <h3>Paste a repo. We build it for you.</h3>
+              <p>No keys, no install, no terminal. Drop a GitHub URL and we run the full AI build on
+                <strong>our</strong> keys, then hand you the live link.</p>
+            </div>
+
+            <form class="rq-form" data-rq novalidate>
+              <div class="rq-fields">
+                <label class="fb-field">
+                  <span class="fb-flabel">GitHub repo URL</span>
+                  <input type="url" name="repo" required inputmode="url" placeholder="https://github.com/owner/name" />
+                </label>
+                <label class="fb-field">
+                  <span class="fb-flabel">Email <em>(we&rsquo;ll send the link when it&rsquo;s ready)</em></span>
+                  <input type="email" name="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" />
+                </label>
               </div>
-              <p class="cmd-eg">e.g. <code>npx explainmyrepo https://github.com/you/your-project</code></p>
-            </div>
-
-            <div class="cmd-card reveal-up" data-d="2">
-              <div class="cmd-card-top"><span class="door-tag alt">claude code</span><h3>The Claude Code plugin</h3></div>
-              <p class="cmd-sub">Install once, then explain any repo with a slash command.</p>
-              <div class="cmd">
-                <span class="prompt" aria-hidden="true">&rsaquo;</span>
-                <code><span class="tok">/explainmyrepo</span> <span class="arg">&lt;github-url&gt;</span></code>
-                <button class="copy-btn" type="button" data-copy="/explainmyrepo &lt;github-url&gt;" aria-label="Copy: /explainmyrepo &lt;github-url&gt;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
-                  <span class="copy-label">Copy</span>
-                </button>
+              <div class="rq-actions">
+                <button class="btn btn-primary" type="submit">Build my explainer <span class="arr" aria-hidden="true">&rarr;</span></button>
+                <p class="fb-note" role="status" data-rq-status></p>
               </div>
-              <p class="cmd-eg">One-time install &rarr; then <code>/explainmyrepo</code> is always a keystroke away.</p>
+              <p class="rq-expect"><span class="hn-dot" aria-hidden="true"></span> This runs a full AI build &mdash; it can take <strong>up to ~15 minutes</strong>. Keep this page open to watch it happen, or just leave your email and we&rsquo;ll send the link when it&rsquo;s ready.</p>
+            </form>
+
+            <div class="rq-progress" data-rq-progress hidden>
+              <span class="rq-spinner" aria-hidden="true"></span>
+              <div class="rq-progtext">
+                <h3>Building your explainer&hellip;</h3>
+                <p class="rq-progline" data-rq-progline>Starting up&hellip;</p>
+                <p class="rq-progsub">This takes a few minutes. You can safely leave &mdash; we&rsquo;ll email you the link too.</p>
+              </div>
+            </div>
+
+            <div class="rq-result" data-rq-result hidden>
+              <span class="fb-check" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              </span>
+              <h3>Your explainer is live.</h3>
+              <p><a class="rq-livelink" data-rq-link href="#" target="_blank" rel="noopener">opening&hellip;</a></p>
+            </div>
+
+            <div class="rq-error" data-rq-error hidden>
+              <h3>That didn&rsquo;t go through.</h3>
+              <p data-rq-errmsg>Something went wrong. Please try again.</p>
             </div>
           </div>
 
-          <aside class="gs-side reveal-up" data-d="3" aria-label="What to expect">
-            <div class="gs-row"><span class="gs-h">What you need</span><p>Node 18+, a GitHub repo URL, and your own API keys (Anthropic for the authoring brain, OpenAI for imagery).</p></div>
-            <div class="gs-row"><span class="gs-h">What happens</span><p>It reads, understands, art-directs and writes the page, draws the real architecture + data-flow diagrams, and grades on mobile and desktop until it clears the bar — then deploys.</p></div>
-            <div class="gs-row"><span class="gs-h">What you get back</span><p>A live URL (terminal + email), a GitHub repo you co-own, the downloadable AI pack — plus the scorecard and both screenshots, so you&rsquo;re the final set of eyes.</p></div>
-          </aside>
-        </div>
-
-        <div class="gs-request reveal-up" data-d="4" id="request">
-          <div class="rq-head">
-            <span class="door-tag hosted">managed &middot; early access</span>
-            <h3>Or &mdash; don&rsquo;t lift a finger. I&rsquo;ll build it for you.</h3>
-            <p>No keys, no install, no terminal. Drop your repo and email &mdash; I build the
-              explainer myself, run it through the same quality gate, and send you the live link,
-              the repo, and the AI pack. Free while it&rsquo;s in early access.</p>
-          </div>
-
-          <form class="rq-form" name="explainer-request" method="POST"
-                data-netlify="true" netlify-honeypot="bot-field" data-rq>
-            <input type="hidden" name="form-name" value="explainer-request" />
-            <input type="hidden" name="source" value="landing" />
-            <p class="fb-hp" hidden aria-hidden="true">
-              <label>Leave this empty: <input name="bot-field" tabindex="-1" autocomplete="off" /></label>
-            </p>
-            <div class="rq-fields">
-              <label class="fb-field">
-                <span class="fb-flabel">Your GitHub repo</span>
-                <input type="url" name="repo" required inputmode="url"
-                  placeholder="https://github.com/you/your-project" />
-              </label>
-              <label class="fb-field">
-                <span class="fb-flabel">Email <em>(so I can send you the link)</em></span>
-                <input type="email" name="email" required autocomplete="email" inputmode="email"
-                  placeholder="you@example.com" />
-              </label>
+          <!-- OPTION 2 — npx (developers, own keys) -->
+          <div class="cmd-card gs-dev reveal-up" data-d="2">
+            <div class="cmd-card-top"><span class="door-tag alt">for developers</span><h3>Run it yourself with npx</h3></div>
+            <p class="cmd-sub">Zero install, your own keys, runs anywhere Node does.</p>
+            <div class="cmd">
+              <span class="prompt" aria-hidden="true">$</span>
+              <code><span class="tok">npx explainmyrepo</span> <span class="arg">&lt;github-url&gt;</span> <span class="tok">--ship-best-effort</span></code>
+              <button class="copy-btn" type="button" data-copy="npx explainmyrepo &lt;github-url&gt; --ship-best-effort" aria-label="Copy the npx command">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>
+                <span class="copy-label">Copy</span>
+              </button>
             </div>
-            <div class="rq-actions">
-              <button class="btn btn-primary" type="submit">Build mine <span class="arr" aria-hidden="true">&rarr;</span></button>
-              <p class="fb-note" role="status" data-rq-status></p>
+            <div class="gs-keys">
+              <span class="gs-h">You bring the keys:</span>
+              <ul>
+                <li><code>ANTHROPIC_API_KEY</code> &mdash; the authoring brain <em>(required)</em></li>
+                <li><code>OPENAI_API_KEY</code> &mdash; imagery + grading <em>(required)</em></li>
+                <li><code>NETLIFY_AUTH_TOKEN</code> &mdash; to deploy a live URL <em>(optional; omit with <code>--no-deploy</code> to build locally)</em></li>
+              </ul>
+              <p class="cmd-eg">Set them in your shell or a <code>.env</code> &mdash; the CLI prompts if a required key is missing.</p>
             </div>
-          </form>
-
-          <div class="rq-thanks" data-rq-thanks hidden>
-            <span class="fb-check" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-            </span>
-            <h3>You&rsquo;re in the queue.</h3>
-            <p>I&rsquo;ll build your explainer by hand and email you the live link, the repo, and the AI pack.</p>
           </div>
         </div>
-
-        <p class="honest-note reveal-up">
-          <span class="hn-dot" aria-hidden="true"></span>
-          <span><strong>Honest status:</strong> the engine is built and proven. The <code>npx</code> package
-          and the Claude Code plugin are publishing now — until that lands, it runs as the Claude Code skill
-          in this repo. We won&rsquo;t show the command as &ldquo;done&rdquo; until it actually installs.</span>
-        </p>
         <p class="visually-hidden" id="copy-status" role="status" aria-live="polite"></p>
       </div>
     </section>

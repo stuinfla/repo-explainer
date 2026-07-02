@@ -1,23 +1,25 @@
 name: Build Explainer
 
-# Hosted runner for explainmyrepo: given a public GitHub repo, build its explainer with
-# Stuart's keys (as repo secrets) and deploy to its own isolated Netlify site.
+# Hosted runner for explainmyrepo: given a GitHub repo, build its explainer with the
+# owner's keys (repo secrets), deploy it to its own Netlify site, and write progress
+# back to a status gist that the website polls. Triggered by the /build Netlify function.
 #
-# RAILS (deterministic, non-negotiable):
-#   • timeout-minutes: 20      → hard TIME cap (a runaway build is killed)
-#   • concurrency (serialized) → one build at a time, no cost fan-out from many triggers
-#   • --no-refine              → caps the expensive gpt-5.5 vision passes (cost rail)
-#   • EXPLAINER_SKIP_INVITE    → never emails a repo owner from an automated run
-#   • input validation         → owner/name shape only; repo must be visible
-# NOTE (v1): triggerable only by repo collaborators (workflow_dispatch). The public web
-# front door + rate-limiting/abuse controls are a deliberate follow-up before it's opened up.
+# RAILS (deterministic): 20-min hard timeout · serialized concurrency (no cost fan-out) ·
+# --no-refine (caps the expensive vision passes) · --ship-best-effort (ALWAYS delivers a
+# URL) · --no-publish (no per-repo GitHub repo/invite, so no extra token needed).
 
 on:
   workflow_dispatch:
     inputs:
       target_repo:
-        description: "owner/repo to explain (public GitHub repo)"
+        description: "owner/repo to explain"
         required: true
+      build_id:
+        description: "correlation id (matches the status gist)"
+        required: false
+      gist_id:
+        description: "status gist to write progress into"
+        required: false
       submitter_email:
         description: "email to notify when done (optional)"
         required: false
@@ -53,27 +55,52 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci || npm install
-          npm i playwright
           npx playwright install --with-deps chromium
 
-      - name: Build + deploy the explainer
+      - name: Build, deploy, and report status
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.EXPLAINER_GH_TOKEN }}
           EXPLAINER_NONINTERACTIVE: "1"
           EXPLAINER_SKIP_INVITE: "1"
+          # Email fallback (non-blocking): if these secrets exist, notify emails the submitter.
+          SMTP_USER: ${{ secrets.GMAIL_USER }}
+          SMTP_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ github.event.inputs.submitter_email }}
+          # Gist status write-back (needs `gist` scope; same account that created the gist):
+          GIST_TOKEN: ${{ secrets.EXPLAINER_GH_TOKEN }}
+          BUILD_ID: ${{ github.event.inputs.build_id }}
+          GIST_ID: ${{ github.event.inputs.gist_id }}
+          REPO: ${{ github.event.inputs.target_repo }}
         run: |
-          node bin/explainmyrepo.mjs '${{ github.event.inputs.target_repo }}' --register-kb --no-refine --no-notify
+          set +e
+          patch_status() {  # status  step  stepName  liveUrl  error
+            [ -z "$GIST_ID" ] || [ -z "$GIST_TOKEN" ] && return 0
+            local content
+            content=$(jq -n --arg b "$BUILD_ID" --argjson s "$1" --arg sn "$3" --arg st "$2" \
+              --arg u "$4" --arg e "$5" --arg r "$REPO" \
+              '{buildId:$b, step:$s, totalSteps:16, stepName:$sn, status:$st, repo:$r,
+                result: (if $u=="" then null else {liveUrl:$u} end),
+                error: (if $e=="" then null else $e end)}')
+            curl -s -X PATCH "https://api.github.com/gists/$GIST_ID" \
+              -H "Authorization: Bearer $GIST_TOKEN" -H "Accept: application/vnd.github+json" \
+              -d "$(jq -n --arg c "$content" '{files:{"status.json":{content:$c}}}')" >/dev/null || true
+          }
 
-      - name: Summarize result
-        if: always()
-        run: |
-          SLUG=$(printf '%s' '${{ github.event.inputs.target_repo }}' | cut -d/ -f2 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
-          {
-            echo "### Explainer build — ${{ github.event.inputs.target_repo }}"
-            echo ""
-            echo "- Live (if deploy succeeded): https://${SLUG}-explainer.netlify.app"
-            echo "- Hub repo: https://github.com/stuinfla/*-${SLUG}-explainer"
-          } >> "$GITHUB_STEP_SUMMARY"
+          patch_status 1 building "Reading and understanding the repo…" "" ""
+          set -o pipefail
+          node bin/explainmyrepo.mjs "$REPO" --ship-best-effort --no-publish --no-refine 2>&1 | tee /tmp/build.log
+          RC=${PIPESTATUS[0]}
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.netlify\.app' /tmp/build.log | tail -1)
+
+          if [ "$RC" -eq 0 ] && [ -n "$URL" ]; then
+            patch_status 16 done "Done — your explainer is live." "$URL" ""
+            echo "LIVE: $URL"
+            echo "### Explainer ready → $URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            ERR=$(tail -c 300 /tmp/build.log | tr '\n' ' ' | tr '"' "'")
+            patch_status 16 failed "The build couldn't finish." "" "It didn't complete. $ERR"
+            echo "::error::build failed (rc=$RC, url=$URL)"
+            exit 1
+          fi

@@ -805,3 +805,29 @@ main, .site-foot { position: relative; z-index: 1; }
   .rq-fields { grid-template-columns: 1fr; gap: 14px; }
   .rq-actions { gap: 12px; }
 }
+
+/* ===================== GET-STARTED: two options + hosted build states ===================== */
+.gs-two { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 22px; align-items: start; }
+.gs-dev { align-self: stretch; }
+.gs-keys { margin-top: 16px; }
+.gs-keys .gs-h { display: block; font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 9px; }
+.gs-keys ul { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 8px; }
+.gs-keys li { font-size: 14px; color: var(--ink-2); line-height: 1.4; }
+.gs-keys li code { font-family: var(--font-mono); font-size: 12.5px; color: var(--mint); }
+.gs-keys li em { font-style: normal; color: var(--ink-faint); }
+.rq-expect { display: flex; gap: 9px; align-items: flex-start; margin-top: 16px; font-size: 13.5px; color: var(--ink-dim); line-height: 1.55; }
+.rq-expect strong { color: var(--ink-2); }
+.rq-progress { display: flex; gap: 16px; align-items: center; padding: 10px 2px; }
+.rq-progress[hidden], .rq-result[hidden], .rq-error[hidden] { display: none; }
+.rq-spinner { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line-2); border-top-color: var(--mint); animation: rq-spin .9s linear infinite; }
+@keyframes rq-spin { to { transform: rotate(360deg); } }
+.rq-progtext h3 { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.01em; }
+.rq-progline { color: var(--mint); font-family: var(--font-mono); font-size: 13px; margin-top: 5px; }
+.rq-progsub { color: var(--ink-dim); font-size: 13px; margin-top: 4px; }
+.rq-result { text-align: center; padding: 12px 0 4px; }
+.rq-result h3 { font-family: var(--font-display); font-weight: 600; font-size: 21px; letter-spacing: -.01em; }
+.rq-livelink { display: inline-block; margin-top: 10px; font-family: var(--font-mono); font-size: 14px; color: var(--mint); word-break: break-all; }
+.rq-error { text-align: center; padding: 10px 0; }
+.rq-error h3 { font-family: var(--font-display); font-weight: 600; font-size: 19px; color: var(--coral); }
+.rq-error p { color: var(--ink-2); margin-top: 6px; }
+@media (max-width: 820px) { .gs-two { grid-template-columns: 1fr; } }

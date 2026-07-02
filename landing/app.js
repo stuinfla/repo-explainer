@@ -121,12 +121,78 @@
     }
   );
 
-  // Request an explainer: native required (repo URL + email) is enough.
-  var rqForm = document.querySelector('form[data-rq]');
-  wireForm(
-    rqForm,
-    rqForm && rqForm.querySelector('[data-rq-status]'),
-    document.querySelector('[data-rq-thanks]'),
-    null
-  );
+  // ---- Hosted builder: paste a repo -> we build on our keys -> poll -> live link ----
+  wireBuildForm(document.querySelector('form[data-rq]'));
+
+  function wireBuildForm(form) {
+    if (!form) return;
+    var statusEl = form.querySelector('[data-rq-status]');
+    var card = form.closest('.gs-request') || document;
+    var progress = card.querySelector('[data-rq-progress]');
+    var progLine = card.querySelector('[data-rq-progline]');
+    var resultEl = card.querySelector('[data-rq-result]');
+    var resultLink = card.querySelector('[data-rq-link]');
+    var errEl = card.querySelector('[data-rq-error]');
+    var errMsg = card.querySelector('[data-rq-errmsg]');
+
+    function setStatus(msg, isErr) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('err', !!isErr);
+    }
+    function show(el) { if (el) el.hidden = false; }
+    function hide(el) { if (el) el.hidden = true; }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!form.checkValidity()) { form.reportValidity(); return; }
+      var fd = new FormData(form);
+      var repo = (fd.get('repo') || '').toString().trim();
+      var email = (fd.get('email') || '').toString().trim();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      setStatus('Starting your build…', false);
+
+      fetch('/.netlify/functions/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: repo, email: email })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (res) {
+        if (!res.ok || !res.j || !res.j.statusUrl) {
+          throw new Error((res.j && res.j.error) || 'Could not start the build. Please try again.');
+        }
+        hide(form); show(progress);
+        poll(res.j.statusUrl, res.j.repo || repo);
+      }).catch(function (err) {
+        if (btn) btn.disabled = false;
+        setStatus(err.message || 'Something went wrong — try again.', true);
+      });
+    });
+
+    function poll(statusUrl, repoName) {
+      var tries = 0;
+      (function tick() {
+        tries++;
+        fetch(statusUrl).then(function (r) { return r.json(); }).then(function (s) {
+          if (progLine && s.stepName) progLine.textContent = s.stepName;
+          if (s.status === 'done' && s.result && s.result.liveUrl) {
+            hide(progress); show(resultEl);
+            if (resultLink) { resultLink.href = s.result.liveUrl; resultLink.textContent = s.result.liveUrl; }
+          } else if (s.status === 'failed') {
+            hide(progress); show(errEl);
+            if (errMsg) errMsg.textContent = s.error || 'The build couldn’t finish. Please try again.';
+          } else if (tries > 300) { // ~25 min ceiling
+            if (progLine) progLine.textContent = 'Still working — if you left your email, we’ll send the link when it’s ready.';
+            setTimeout(tick, 15000);
+          } else {
+            setTimeout(tick, 5000);
+          }
+        }).catch(function () {
+          if (tries <= 300) setTimeout(tick, 6000);
+        });
+      })();
+    }
+  }
 })();
